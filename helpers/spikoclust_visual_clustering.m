@@ -1,5 +1,5 @@
-function fig_num=ephys_visual_clustresults(SPIKEWINDOWS,varargin)
-%spike statistics figure, include 2D histogram and ISI distribution
+function fig_num=ephys_visual_cluststats(CLUSTER,varargin)
+%cluster statistics, include Fisher projection and other quality metrics
 %
 %
 %
@@ -15,7 +15,10 @@ if mod(nparams,2)>0
 end
 
 fig_num=[];
-spike_fs=50e3;
+maxlag=.2;
+xres=.00075;
+spacingvert=.15;
+spacinghor=.15;
 
 colors=[...	
 	1 .6445 0;... % orange	
@@ -34,82 +37,197 @@ colors=[...
 	1 .2695 0;... % orange red
 	]; 
 
-legend_labels=[];
+crosscolor=[0 0 0];
+
+% just in case add the hot colormap at the end
 
 for i=1:2:nparams
 	switch lower(varargin{i})
-		case 'spike_fs'
-			spike_fs=varargin{i+1};
 		case 'fig_num'
 			fig_num=varargin{i+1};
-		case 'colors'
-			colors=varargin{i+1};
-		case 'legend_labels'
-			legend_labels=varargin{i+1};
+		case 'maxlag'
+			maxlag=varargin{i+1};
+		case 'xres'
+			xres=varargin{i+1};
 	end
 end
 
-[nclust]=length(SPIKEWINDOWS);
-[samples,trials]=size(SPIKEWINDOWS{1});
+colorappend=colormap('hot');
+colors=[colors;colorappend];
 
-timevec=([1:samples]./spike_fs)*1e3;
+% fisher LDA for each cluster
+% now compare all combinations
+
+
+nplots=length(CLUSTER.windows);
+spike_fs=CLUSTER.parameters.interpolate_fs;
+trialmax=-inf;
+
+for i=1:nplots
+	tmpmax=max(CLUSTER.trials{i});
+	if tmpmax>trialmax
+		trialmax=tmpmax;
+	end
+end
+
+ntrials=trialmax;
+
+spiketimes={};
+
+for j=1:nplots
+	for k=1:ntrials
+		clusterspikes=CLUSTER.times{j}(CLUSTER.trials{j}==k);
+		clusterspikes=clusterspikes./CLUSTER.parameters.fs;
+		spiketimes{j}{k}=clusterspikes;
+	end
+end
+
+
+K=length(spiketimes);
+
+multi_clust=0;
+if K>1
+	clustercombos=nchoosek(1:K,2);
+	ncombos=size(clustercombos,1);
+	clustercombos=sortrows(clustercombos,[1 2]);
+	multi_clust=1;
+end
 
 if isempty(fig_num)
-	fig_num=figure('Visible','on','renderer','painters');
+	fig_num=figure('Visible','on','position',[0 0 200+300*K 200+300*K],'renderer','painters');
 end
 
-% organize cluster by p2p
+% grid for figure as follows:
+% top left 2x2 axes (mean wave)
+% top right KxK axes (fisher proj)
+% bottom left Kx2 axes (autocorr)
+% bottom right KxK axes (crosscorr)
 
-for i=1:nclust
-	mean_waveform=mean(SPIKEWINDOWS{i},2);
-	minpeak=min(mean_waveform);
-	maxpeak=max(mean_waveform);
-	p2p(i)=maxpeak-minpeak;
+nrows=max(2,K-1)+K-1;
+ncols=2+K-1;
+
+left_spacinghor=.15.*(1/(1+log(K)));
+left_spacingvert=.05.*(1/(1+log(K)));
+left_margin=.15.*(1/(1+log(K)));
+
+legends={};
+
+spikeheight=max(1,K-2);
+
+subaxis(nrows,ncols,1,1,2,spikeheight,'margin',left_margin,'spacingvert',left_spacingvert,'spacinghor',left_spacinghor);
+spikoclust_visual_simplewaveforms(CLUSTER.windows,'spike_fs',spike_fs,'fig_num',fig_num,'legend_labels',legends);
+xlabel('');
+ylabel('Amplitude ($\mu$Volts)','interpreter','latex');
+set(gca,'ticklength',[0 0],'linewidth',1);
+
+% move to the top right for the Fisher plot
+% top right, Fisher projection
+
+row=0;
+col=2;
+
+right_margin=.05;
+right_spacingvert=(1/K).*spacingvert;
+right_spacinghor=(1/K).*spacinghor;
+
+if multi_clust
+	for i=1:ncombos
+
+		[density1,density2,xi]=spikoclust_fisher_projection(CLUSTER.spikedata{clustercombos(i,1)},...
+			CLUSTER.spikedata{clustercombos(i,2)});
+
+		xcoord= [ xi fliplr(xi) ];
+		ycoord1=[zeros(size(xi)) fliplr(density1)];
+		ycoord2=[zeros(size(xi)) fliplr(density2)];
+
+		subaxis(nrows,ncols,clustercombos(i,2)+col-1,clustercombos(i,1)+row,1,1,...
+			'margin',right_margin,'spacingvert',right_spacingvert,'spacinghor',right_spacinghor);
+
+		% on a Mac transparency is completely borked :(
+
+		patch(xcoord,ycoord1,1,'facecolor',colors(clustercombos(i,1),:),...
+			'edgecolor','none');
+		hold on
+		patch(xcoord,ycoord2,1,'facecolor',colors(clustercombos(i,2),:),...
+			'edgecolor','none');
+
+		set(gca,'FontSize',12,'FontName','Helvetica','linewidth',1);
+		set(gca,'layer','top','linewidth',1,'ticklength',[0 0]);
+		box off;
+		axis tight;
+
+		if i==1
+			ylabel('P');
+			xlabel('Fisher Score');
+		end
+
+		axis off;
+
+
+	end
 end
 
-% organize waveforms by p2p
+% bottom left, autocorr
 
-[val plotorder]=sort(p2p,'descend');
+row=spikeheight;
+col=0;
 
-% instead simply plot mean and std, then color code everything
-% and show--(1) waveforms, (2) fisher projections, (3) auto-correlations, and (4) cross-correlations
+for i=1:K
 
-patchx=[ timevec fliplr(timevec) ];
-hsvcolors=rgb2hsv(colors);
+	subaxis(nrows,ncols,1+col,i+row,2,1,...
+		'margin',left_margin,'spacingvert',left_spacingvert,'spacinghor',left_spacinghor);
 
-for i=plotorder
+	spikoclust_correlogram(spiketimes{i},spiketimes{i},...
+		'fig_num',fig_num,'type','auto','maxlag',maxlag,'xres',xres,...
+		'color',colors(i,:));
 
-	meanwave=mean(SPIKEWINDOWS{i},2)';
-	varwave=std(SPIKEWINDOWS{i},0,2)';
-	patchy=[ meanwave-varwave fliplr(meanwave+varwave) ];
+	set(gca,'FontSize',12,'FontName','Helvetica','linewidth',1);
+	set(gca,'xtick',[-maxlag*1e3:50:maxlag*1e3],'ticklength',[0 0],'layer','top');
 
-	patchcolor=hsv2rgb(hsvcolors(i,:));
-	edgecolor=hsv2rgb(hsvcolors(i,:)-[0 0 .3]);
-	linecolor=hsv2rgb(hsvcolors(i,:)-[0 0 .4]);
+	if i==K
+		xlabel('Lag (ms)');
+		ylabel('Autocorr (Hz)');
+	else
+		set(gca,'xtick',[]);
+	end
 
-	h(i)=patch(patchx,patchy,1,'facecolor',...
-		patchcolor,'edgecolor',edgecolor,'facealpha',1);
-
-	hold on;
-	plot(timevec,meanwave,'-','color',linecolor,'linewidth',1);
+	box off
+	axis tight
 
 end
 
-ylabel('microVolts');
-xlabel('Time (ms)');
-box off
-axis tight;
+row=K-1;
+col=2;
+spacinghor=.025;
 
-if ~isempty(legend_labels)
-	L=legend(h,legend_labels);
-	legend boxoff;
+if multi_clust
+	for i=1:ncombos
+
+
+		subaxis(nrows,ncols,clustercombos(i,2)+col-1,clustercombos(i,1)+row,1,1,...
+			'margin',right_margin,'spacingvert',right_spacingvert,'spacinghor',right_spacinghor);
+
+		spikoclust_correlogram(spiketimes{clustercombos(i,1)},spiketimes{clustercombos(i,2)},...
+			'fig_num',fig_num,'type','cross','maxlag',maxlag,'xres',xres,...
+			'color',crosscolor);
+
+		set(gca,'FontSize',12,'FontName','Helvetica','linewidth',1);
+		set(gca,'xtick',[-maxlag*1e3 maxlag*1e3],'ticklength',[0 0],'layer','top');
+
+		if i==1
+			xlabel('Lag (ms)');
+			ylabel('Crosscorr (Hz)');
+		else
+			set(gca,'xtick',[]);
+		end
+
+		% shift zero ytick up
+
+		box off
+		axis tight
+
+
+	end
 end
 
-prettify_axis(gca,'FontSize',12,'FontName','Helvetica','linewidth',1);
-prettify_axislabels(gca,'FontSize',12,'FontName','Helvetica','linewidth',1);
 
-if ~isempty(legend_labels)
-	set(L,'location','SouthEast','FontSize',10);
-end
-
-set(gca,'layer','top');

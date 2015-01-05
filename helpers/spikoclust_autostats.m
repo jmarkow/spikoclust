@@ -75,34 +75,19 @@ if isempty(ntrials)
 	ntrials=trialmax;
 end
 
-
-for j=1:nplots
-
-	for k=1:ntrials
-
-		clusterspikes=CLUSTER.times{j}(CLUSTER.trials{j}==k);
-		clusterspikes=clusterspikes./CLUSTER.parameters.fs;
-		clustspiketimes{j}{k}=clusterspikes;
-
-	end
-end
-
-
-% delete old stats figures if they exist
-
-
-
 % estimate SNR from 6*std of spikeless trace
 
 noise_p2p=std(SPIKELESS{1});
 
 noise_p2p(isnan(noise_p2p))=[];
 mean_noise_p2p=mean(noise_p2p);
-mean_wave=mean(CLUSTER.windows{j},2);
-max_wave=max(mean_wave);
-min_wave=min(mean_wave);
 
-CLUSTER.stats.snr(j)=[ abs(max_wave-min_wave)/mean_noise_p2p ];
+for j=1:nplots
+	mean_wave=mean(CLUSTER.windows{j},2);
+	max_wave=max(mean_wave);
+	min_wave=min(mean_wave);
+	CLUSTER.stats.snr(j)=[ abs(max_wave-min_wave)/mean_noise_p2p ];
+end
 
 if savemode
 	stats_fig=figure('Visible','off');
@@ -124,9 +109,8 @@ if ~isempty(CLUSTER.parameters.tetrode_channels)
 		sum(CLUSTER.parameters.spike_window*CLUSTER.parameters.interpolate_fs)));
 end
 
-stats_fig=spikoclust_visual_waveforms(CLUSTER.windows,CLUSTER.isi,...
-	'noise_p2p',mean_noise_p2p,'fs',CLUSTER.parameters.fs,'spike_fs',...
-	CLUSTER.parameters.interpolate_fs,'fig_num',stats_fig,'note',note,...
+stats_fig=spikoclust_visual_waveforms(CLUSTER,...
+	'noise_p2p',mean_noise_p2p,'fig_num',stats_fig,'note',note,...
 	'channelboundary',channelboundary);
 
 set(stats_fig,'Position',[0 0 250*nplots 600]);
@@ -141,7 +125,7 @@ isi_violations=isi_violations/length(CLUSTER.isi{j});
 % are there enough spikes?
 
 if savemode
-	multi_fig_save(stats_fig,savedir,...
+	markolab_multi_fig_save(stats_fig,savedir,...
 		[ savefilename_stats 'spikestats' ],'eps,png','res',100,'renderer','painters');
 	close([stats_fig]);
 end
@@ -170,8 +154,7 @@ if nplots<=10
 		stats_fig=figure('Visible','on','renderer','painters');
 	end
 
-	stats_fig=spikoclust_visual_clustering(CLUSTER.windows,clustspiketimes,CLUSTER.spikedata,...
-		'spike_fs',CLUSTER.parameters.interpolate_fs,'fig_num',stats_fig,'stats',CLUSTER.stats);
+	stats_fig=spikoclust_visual_clustering(CLUSTER,'fig_num',stats_fig);
 
 	set(stats_fig,'Position',[0 0 250+200*nplots 250+200*nplots]);
 	set(stats_fig,'PaperPositionMode','auto');

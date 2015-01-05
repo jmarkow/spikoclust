@@ -1,4 +1,4 @@
-function fig_num=ephys_visual_spikestats(SPIKEWINDOWS,SPIKEISI,varargin)
+function fig_num=ephys_visual_spikestats(CLUSTER,varargin)
 %spike statistics figure, include 2D histogram and ISI distribution
 %
 %
@@ -14,12 +14,10 @@ if mod(nparams,2)>0
 	error('Parameters must be specified as parameter/value pairs');
 end
 
-fs=25e3;
 fig_num=[];
 patch_color=[1 .6 0];
 noise_p2p=[];
 y_res=200;
-spike_fs=50e3;
 note=[];
 channelboundary=[];
 spacinghor=.2;
@@ -30,10 +28,6 @@ marginright=.08;
 
 for i=1:2:nparams
 	switch lower(varargin{i})
-		case 'fs'
-			fs=varargin{i+1};
-		case 'spike_fs'
-			spike_fs=varargin{i+1};
 		case 'fig_num'
 			fig_num=varargin{i+1};
 		case 'patch_color'
@@ -57,8 +51,10 @@ if isempty(fig_num)
 	fig_num=figure('Visible','on');
 end
 
-columns=length(SPIKEWINDOWS);
+columns=length(CLUSTER.windows);
 
+fs=CLUSTER.parameters.fs;
+spike_fs=CLUSTER.parameters.interpolate_fs;
 
 coords=[1 columns+1 columns*2+1];
 
@@ -69,8 +65,8 @@ marginleft=marginleft/(1+log(columns));
 
 for i=1:columns
 
-	wins=SPIKEWINDOWS{i};
-	isi=SPIKEISI{i};
+	wins=CLUSTER.windows{i};
+	isi=CLUSTER.isi{i};
 
 	% patch coordinates
 
@@ -126,10 +122,8 @@ for i=1:columns
 	box off
 	axis tight;
 
-	if ~isempty(noise_p2p)
-		mean_waveform=mean(wins,2);
-		peaktopeak=max(mean_waveform)-min(mean_waveform);
-		title([' SNR:  ' num2str(peaktopeak/noise_p2p)],'FontName','Helvetica','FontSize',12)
+	if isfield(CLUSTER.stats,'snr')	
+		title([' SNR:  ' num2str(CLUSTER.stats.snr(i))],'FontName','Helvetica','FontSize',12)
 	end
 
 	ylimits=ylim();
@@ -140,8 +134,8 @@ for i=1:columns
 	end
 
 	set(gca,'YTick',yticks);
-	prettify_axis(gca,'FontSize',12,'FontName','Helvetica','linewidth',1,'ticklength',[0 0]);
-	prettify_axislabels(gca,'FontSize',12,'FontName','Helvetica');
+	set(gca,'FontSize',12,'FontName','Helvetica','linewidth',1,'ticklength',[0 0]);
+	%prettify_axislabels(gca,'FontSize',12,'FontName','Helvetica');
 	set(gca,'xcolor',get(gcf,'color'));
 
 	yticks=[ceil(voltmin/10)*10 floor(voltmax/10)*10];
@@ -168,8 +162,8 @@ for i=1:columns
 	%box off
 
 	xlabel('Time (ms)','FontName','Helvetica','FontSize',12);
-	prettify_axis(gca,'FontSize',12,'FontName','Helvetica','linewidth',1,'ticklength',[0 0]);
-	prettify_axislabels(gca,'FontSize',12,'FontName','Helvetica');
+	set(gca,'FontSize',12,'FontName','Helvetica','linewidth',1,'ticklength',[0 0]);
+	%prettify_axislabels(gca,'FontSize',12,'FontName','Helvetica');
 	axis xy
 	box off
 	axis tight
@@ -185,7 +179,7 @@ for i=1:columns
 	[density,xi]=ksdensity((isi/fs)*1e3,isipoints,'support','positive');
 	%density=density./sum(density); % normalization UNNECESSARY w/ ksdensity
 
-	%density=histc((SPIKEISI/fs)*1e3,isipoints);
+	%density=histc((CLUSTER.isi/fs)*1e3,isipoints);
 	%h=bar(isipoints,density,'histc');
 
 	% get percentage of ISI values below 1 msec
@@ -201,7 +195,11 @@ for i=1:columns
 	set(hline,'clipping','off');
 	box off
 	%set(h,'FaceColor',[.7 .7 .7],'EdgeColor','k','LineWidth',1.5);
-	xlabel({['ISI (ms), ' num2str(violations) '% < 1 ms '];[note{i}]});
+	
+	if ~isempty(note)
+		xlabel({['ISI (ms), ' num2str(violations) '% < 1 ms '];[note{i}]});
+	end
+
 	if i==1
 		ylabel('P(ISI)');
 	end
@@ -213,8 +211,8 @@ for i=1:columns
 		set(gca,'YLim',ylimits,'YTick',ylimits);
 	end
 
-	prettify_axis(gca,'FontSize',12,'FontName','Helvetica','linewidth',1,'ticklength',[0 0]);
-	prettify_axislabels(gca,'FontSize',12,'FontName','Helvetica');
+	set(gca,'FontSize',12,'FontName','Helvetica','linewidth',1,'ticklength',[0 0]);
+	%prettify_axislabels(gca,'FontSize',12,'FontName','Helvetica');
 	set(gca,'layer','top');
 	xlim([xi(1) xi(end)]);
 	set(gca,'XTick',[ .1 1 10 100 ],'XTickLabel',[ .1 1 10 100 ],'XMinorTick','off');

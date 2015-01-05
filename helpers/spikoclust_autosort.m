@@ -157,7 +157,7 @@ for j=1:length(SPIKES)
 	%spikemask([1:15 end-15:end],:,:)=0;
 	%SPIKES(j).windows=SPIKES(j).windows.*spikemask;
 
-	alignspikes=spikosort_upsample_align(SPIKES(j),'interpolate_fs',interpolate_fs,'align_method',align_method);	
+	alignspikes=spikoclust_upsample_align(SPIKES(j),'interpolate_fs',interpolate_fs,'align_method',align_method);	
 	CLUSTSPIKES(j)=alignspikes;
 
 	% cluster with the decimated spikes

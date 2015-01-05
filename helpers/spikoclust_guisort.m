@@ -137,7 +137,7 @@ for j=1:length(SPIKES)
 	%spikemask([1:15 end-15:end],:,:)=0;
 	%SPIKES(j).windows=SPIKES(j).windows.*spikemask;
 
-	alignspikes=ephys_spike_upsample_align(SPIKES(j),'interpolate_fs',interpolate_fs,'align_method',align_method);	
+	alignspikes=spikoclust_upsample_align(SPIKES(j),'interpolate_fs',interpolate_fs,'align_method',align_method);	
 	CLUSTSPIKES(j)=alignspikes;
 
 	% cluster with the decimated spikes
@@ -243,7 +243,7 @@ end
 
 outlierpoints=[];
 if any(strcmp('pca',lower(features)))
-	newmodel=gmem(clusterspikewindows',[],1,'garbage',1,'merge',0,'debug',0);
+	newmodel=spikoclust_gmem(clusterspikewindows',[],1,'garbage',1,'merge',0,'debug',0);
 	[v,d]=eigs(newmodel.sigma(:,:,1));
 	newscore=-clusterspikewindows'*v;
 	spike_data=[spike_data newscore(:,1:pcs)];
@@ -261,7 +261,11 @@ spike_data(isnan(spike_data))=0;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% GUI setup
 
+stats_window_a=figure('Visible','on','Position',[450,500,300,300],'Name','Stats Window A','NumberTitle','off');
+stats_window_b=figure('Visible','on','Position',[450,500,300,300],'Name','Stats Window B','NumberTitle','off');
+
 main_window=figure('Visible','on','Position',[360,500,700,600],'Name','Data Plotter','NumberTitle','off');
+
 plot_axis=axes('Units','pixels','Position',[50,50,425,425]);
 
 pop_up_x= uicontrol('Style','popupmenu',...
@@ -336,7 +340,7 @@ set([main_window,plot_axis,pop_up_x,pop_up_x_text,pop_up_y,pop_up_y_text,pop_up_
 	push_replot_save,push_recluster],'Units','Normalized');
 movegui(main_window,'center')
 
-set(main_window,'Visible','On');
+set(main_window,'Visible','On','DeleteFcn',@plot_close);
 uiwait(main_window);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Callbacks
@@ -471,7 +475,7 @@ for j=1:nclust
 	startobj.mixing(j)=sum(idx==j)/length(idx);
 end
 
-clustermodel=gmem(cluster_data,startobj,nclust,...
+clustermodel=spikoclust_gmem(cluster_data,startobj,nclust,...
 		'garbage',garbage,'merge',smem,'debug',0);
 
 MODEL=clustermodel;
@@ -550,7 +554,7 @@ end
 % compute any other stats we want, ISI, etc...
 
 [WINDOWS TIMES TRIALS SPIKEDATA ISI STATS]=...
-	check_clusterquality(storespikewindows,spiketimes,cluster_data,LABELS,trialnum,clustermodel);
+	spikoclust_cluster_quality(storespikewindows,spiketimes,cluster_data,LABELS,trialnum,clustermodel);
 change_plot();
 
 end
@@ -565,7 +569,32 @@ cluster=[];
 cluster=struct('windows',{WINDOWS},'times',{TIMES},'trials',{TRIALS},'spikedata',{SPIKEDATA},'stats',{STATS},...
 	'isi',{ISI},'model',MODEL);
 cluster.parameters=PARAMETERS;
-spikoclust_autostats(cluster,NOISEDATA,'fig_num',[],'clust_plot',0,'savemode',0)
+
+nclust=length(cluster.windows);
+
+set(0,'CurrentFigure',stats_window_a);
+
+pos=get(stats_window_a,'Position');
+set(stats_window_a,'Position',[pos(1) pos(2) 250+200*nclust 250+200*nclust]);
+spikoclust_visual_clustering(cluster,'fig_num',stats_window_a);
+
+pos=get(stats_window_b,'Position');
+set(0,'CurrentFigure',stats_window_b);
+set(stats_window_b,'Position',[pos(1) pos(2) 250*nclust 600]);
+
+spikoclust_visual_waveforms(cluster,'fig_num',stats_window_b);
+
+end
+
+function plot_close(varargin)
+
+if ishandle(stats_window_a) && strcmp(get(stats_window_a,'type'),'figure')
+	close(stats_window_a);
+end
+
+if ishandle(stats_window_b) && strcmp(get(stats_window_b,'type'),'figure')
+	close(stats_window_b);
+end
 
 end
 
