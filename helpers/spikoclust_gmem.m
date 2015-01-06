@@ -23,6 +23,9 @@ end
 
 maxiter=100;
 regularize=1e-6;
+sigma_fix=1e-5; % adds small constant to diagonal of covariance for mvnpdf
+		% increase if you get complaints about SIGMA not being
+		% symmetric, positive-definite
 epsilon=1e-10;
 lambda=.05; % changed from .01 to .05 9/19/13
 garbage=1;
@@ -52,6 +55,8 @@ for i=1:2:nparams
 			merge=varargin{i+1};
 		case 'debug'
 			debug=varargin{i+1};
+		case 'sigma_fix'
+			sigma_fix=varargin{i+1};
 		otherwise
 	end
 end
@@ -121,10 +126,10 @@ if debug
 end
 
 
-[newmodel]=fullem(DATA,INIT,unip,maxiter,epsilon,lambda);
+[newmodel]=fullem(DATA,INIT,unip,maxiter,epsilon,lambda,sigma_fix);
 
 if debug
-	gaussvis(newmodel,DATA,'fig_num',fig);
+	spikoclust_gaussvis(newmodel,DATA,'fig_num',fig);
 	drawnow;
 	pause(.5);
 end
@@ -152,7 +157,7 @@ if merge & NCLUST>2
 
 		% get the split candidates
 
-		[~,splits]=splitmerit(DATA,newmodel,unip);
+		[~,splits]=splitmerit(DATA,newmodel,unip,sigma_fix);
 
 		% go through each pair find a non-matching split
 		% now for each pair we take the split candidates ~==pair
@@ -188,12 +193,12 @@ if merge & NCLUST>2
 			% run partial em on our new merged cluster
 
 			mergemodel1=partialem(DATA,mergemodel1,...
-				unip,maxiter,epsilon,lambda,[currtrip]);
+				unip,maxiter,epsilon,lambda,[currtrip],sigma_fix);
 			mergemodel1=fullem(DATA,mergemodel1,...
-				unip,maxiter,epsilon,lambda);
+				unip,maxiter,epsilon,lambda,sigma_fix);
 
 			if debug
-				gaussvis(mergemodel1,DATA,'fig_num',fig);
+				spikoclust_gaussvis(mergemodel1,DATA,'fig_num',fig);
 				drawnow;
 				pause(.5);
 			end
@@ -233,7 +238,7 @@ if merge & NCLUST>2
 end
 
 if debug
-	gaussvis(newmodel,DATA,'fig_num',fig);
+	spikoclust_gaussvis(newmodel,DATA,'fig_num',fig);
 	title('Final');
 	drawnow;
 	pause(.5);
@@ -244,7 +249,7 @@ newmodel.BIC=-2*newmodel.likelihood+log(datapoints)*nparams;
 % get the total entropy
 
 for i=1:NCLUST
-	pxtheta=mvnpdf(DATA,newmodel.mu(i,:),newmodel.sigma(:,:,i));
+	pxtheta=mvnpdf(DATA,newmodel.mu(i,:),newmodel.sigma(:,:,i)+eye(D)*sigma_fix);
 	tmp=newmodel.R(:,i).*pxtheta;
 	tmp(tmp<0)=[];
 	entropy(i)=sum(tmp.*log(tmp+1e-300));
@@ -347,7 +352,7 @@ end
 %%%%%%%%%% FULL EM
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-function [NEWMODEL]=fullem(DATA,MODEL,unip,maxiter,epsilon,lambda)
+function [NEWMODEL]=fullem(DATA,MODEL,unip,maxiter,epsilon,lambda,sigma_fix)
 
 %
 %
@@ -387,7 +392,7 @@ for i=1:maxiter
 
 	for j=1:NCLUST
 
-		pxtheta=mvnpdf(DATA,mu(j,:),sigma(:,:,j)); % point x 1 vector
+		pxtheta=mvnpdf(DATA,mu(j,:),sigma(:,:,j)+eye(D)*sigma_fix); % point x 1 vector
 		mixprob=mixing(j)*pxtheta;
 		px=px+mixprob;
 		den=den+mixprob;
@@ -474,7 +479,7 @@ end
 %%%%%%%%%% PARTIAL EM
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-function [NEWMODEL]=partialem(DATA,MODEL,unip,maxiter,epsilon,lambda,idx)
+function [NEWMODEL]=partialem(DATA,MODEL,unip,maxiter,epsilon,lambda,idx,sigma_fix)
 
 %
 %
@@ -493,7 +498,7 @@ mu=MODEL.mu;
 sigma=MODEL.sigma;
 mixing=MODEL.mixing;
 
-R=estep(DATA,MODEL,unip);
+R=estep(DATA,MODEL,unip,sigma_fix);
 
 [datapoints,D]=size(DATA);
 NCLUST=size(mu,1);
@@ -524,7 +529,7 @@ for i=1:maxiter
 
 	for j=idx
 
-		pxtheta=mvnpdf(DATA,mu(j,:),sigma(:,:,j)); % point x 1 vector
+		pxtheta=mvnpdf(DATA,mu(j,:),sigma(:,:,j)+eye(D)*sigma_fix); % point x 1 vector
 		mixprob=mixing(j)*pxtheta;
 		px=px+mixprob;
 		den=den+mixprob;
@@ -641,14 +646,15 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-function [split,splitidx]=splitmerit(DATA,MODEL,unip)
+function [split,splitidx]=splitmerit(DATA,MODEL,unip,sigma_fix)
 %
 %
 %
 
+[datapoints,D]=size(DATA);
 clusterids=find(~MODEL.garbage);
 
-R=estep(DATA,MODEL,unip);
+R=estep(DATA,MODEL,unip,sigma_fix);
 
 % take the responsibilities, compare with the model PDFs
 
@@ -657,7 +663,7 @@ sigma=MODEL.sigma;
 
 for i=clusterids
 
-	pxtheta=mvnpdf(DATA,mu(i,:),sigma(:,:,i)); % point x 1 vector
+	pxtheta=mvnpdf(DATA,mu(i,:),sigma(:,:,i)+eye(D)*sigma_fix); % point x 1 vector
 	
 	% "empirical" density
 	
@@ -756,7 +762,7 @@ end
 %%%%%%%%%% ESTEP
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-function R=estep(DATA,MODEL,unip)
+function R=estep(DATA,MODEL,unip,sigma_fix)
 %
 %
 %
@@ -790,7 +796,7 @@ end
 
 for i=1:NCLUST
 
-	pxtheta=mvnpdf(DATA,mu(i,:),sigma(:,:,i)); % point x 1 vector
+	pxtheta=mvnpdf(DATA,mu(i,:),sigma(:,:,i)+eye(D)*sigma_fix); % point x 1 vector
 	mixprob=mixing(i)*pxtheta;
 	px=px+mixprob;
 	den=den+mixprob;
