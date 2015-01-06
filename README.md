@@ -35,7 +35,7 @@ To verify that everything is working correctly, download "simulation_1.mat" from
 
 ```
 >>[cluster,spikeless]=spikoclust_sort(data,24e3,'auto_clust',1,'freq_range',[400 6e3],'align_method','max');
->>spikoclust_autostats(cluster,stats);
+>>spikoclust_autostats(cluster,spikeless);
 ```
 
 You should see the following three windows. 
