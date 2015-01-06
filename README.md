@@ -31,7 +31,7 @@ This will attempt to spike sort the data organized into the matrix mydata (sampl
 
 The output is a structure that contains: the spike waveforms, the spike times (in samples), the inter-spike-intervals, instantaneous firing rate and some clustering statistics.
 
-To verify that everything is working correctly, download "simulation_set1.mat" from [here](http://www2.le.ac.uk/departments/engineering/research/bioengineering/neuroengineering-lab/simulations/simulation-1.mat). This is some simulated data from Rodrigo Quiroga's lab.  Now run the following commands,
+To verify that everything is working correctly, download "simulation_1.mat" from [here](http://www2.le.ac.uk/departments/engineering/research/bioengineering/neuroengineering-lab/simulations/simulation-1.mat). This is some simulated data from Rodrigo Quiroga's lab.  Now run the following commands,
 
 ```
 >>[cluster,spikeless]=spikoclust_sort(data,24e3,'auto_clust',1,'freq_range',[400 6e3],'align_method','max');
