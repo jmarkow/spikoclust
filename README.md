@@ -40,9 +40,7 @@ To verify that everything is working correctly, download "simulation_set1.mat" f
 
 You should see the following three windows. 
 
-![Stats window A](/spikoclust_demo_1.png?raw=true "Stats window A")
-![Stats window B](/spikoclust_demo_2.png?raw=true "Stats window B")
-![Stats window C](/spikoclust_demo_3.png?raw=true "Stats window C")
+![Stats window A](/spikoclust_demo_1.png?raw=true "Stats window A") ![Stats window B](/spikoclust_demo_2.png?raw=true "Stats window B") ![Stats window C](/spikoclust_demo_3.png?raw=true "Stats window C")
 
 ###Script options
 
