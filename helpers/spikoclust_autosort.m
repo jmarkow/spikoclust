@@ -1,11 +1,6 @@
-function [WINDOWS TIMES TRIALS ISI STATS OUTLIERS SPIKEDATA MODEL]=...
-		ephys_spike_cluster_auto(SPIKES,NOISEDATA,varargin)
-%automated spike clustering using a GMM with EM
+function [WINDOWS TIMES TRIALS ISI STATS OUTLIERS SPIKEDATA MODEL]=spikoclust_autosort(SPIKES,NOISEDATA,varargin)
+%automated spike clustering using a GMM with split-and-merge EM
 %
-%
-%
-
-
 
 % spikewindows', rows x samples, each row is a windowed spike waveform
 
@@ -82,10 +77,6 @@ for i=1:2:nparams
 	end
 end
 
-% TODO: chi2 test for dealing with outliers (simply take residuals and use chi2 CDF)
-% need to deal with cell input (multiple trials), convert input to big matrix
-% and spit out trial number
-
 downfact=interpolate_fs/fs;
 
 if mod(downfact,1)~=0
@@ -97,8 +88,6 @@ spiketimes=[];
 spikeifr=[];
 trialnum=[];
 spike_data=[];
-
-% use ifr as a clustering feature
 
 % string the channels together for clustering
 % get the covariance matrices for whitening
@@ -227,8 +216,6 @@ OUTLIERS=storespikewindows(:,LABELS==0);
 
 % now assess the cluster quality ,
 % take each cluster and check the FP and FN rate
-
-% use l ratio of .05
 
 [WINDOWS TIMES TRIALS SPIKEDATA ISI STATS]=...
 	spikoclust_cluster_quality(storespikewindows,spiketimes,spikedata,LABELS,trialnum,MODEL);

@@ -1,5 +1,5 @@
-function NEWSPIKES=ephys_spike_upsample_align(SPIKES,varargin)
-%
+function NEWSPIKES=spikoclust_upsample_align(SPIKES,varargin)
+%Upsamples and aligns detected spikes
 %
 %
 %
@@ -7,7 +7,7 @@ function NEWSPIKES=ephys_spike_upsample_align(SPIKES,varargin)
 
 visualize='y';
 interpolate_fs=200e3; % what fs should we intepolate to? (50e3 has worked in my hands, consider going higher for low SNR)
-align_method='min'; % you'll want to use COM here, others seem a bit unreliable
+align_method='min'; % COM is not the most reliable for me  ('min' and 'max' work well)
 peak_frac=.6; % fraction of peak to use as cutoff for COM calculation (i.e. all samples below peak_frac*peak are included)
 peak_width=4; % how many samples about the peak to include in COM (interpolated space, 5-8 is reasonable here for 50e3 fs)
 auto_factor=1.8; % fraction that max must exceed min to use for alignment (1.2=20% higher)

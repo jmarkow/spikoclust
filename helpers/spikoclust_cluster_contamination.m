@@ -1,7 +1,5 @@
-function CONTAMINATION=check_contamination(SPIKEDATA,MODEL)
-%TODO: appears to be error in indexing, need to check thoroughly
-%
-%
+function CONTAMINATION=spikoclust_cluster_contamination(SPIKEDATA,MODEL)
+%TODO: may be an error in indexing, need to check thoroughly
 %
 
 nclust=size(MODEL.mu,1);

@@ -1,4 +1,4 @@
-function [WINDOWS TIMES TRIALS ISI STATS OUTLIERS SPIKEDATA MODEL]=ephys_spike_clustergui_tetrode(SPIKES,NOISEDATA,PARAMETERS,varargin)
+function [WINDOWS TIMES TRIALS ISI STATS OUTLIERS SPIKEDATA MODEL]=spikoclust_guisort(SPIKES,NOISEDATA,PARAMETERS,varargin)
 %GUI for spike cluster cutting
 %
 %

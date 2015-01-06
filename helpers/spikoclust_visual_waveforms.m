@@ -1,4 +1,4 @@
-function fig_num=ephys_visual_spikestats(CLUSTER,varargin)
+function fig_num=spikoclust_visual_waveforms(CLUSTER,varargin)
 %spike statistics figure, include 2D histogram and ISI distribution
 %
 %
@@ -136,7 +136,8 @@ for i=1:columns
 	set(gca,'YTick',yticks);
 	set(gca,'FontSize',12,'FontName','Helvetica','linewidth',1,'ticklength',[0 0]);
 	%prettify_axislabels(gca,'FontSize',12,'FontName','Helvetica');
-	set(gca,'xcolor',get(gcf,'color'));
+	%set(gca,'xcolor',get(gcf,'color'));
+	set(gca,'xtick',[])
 
 	yticks=[ceil(voltmin/10)*10 floor(voltmax/10)*10];
 
@@ -205,7 +206,7 @@ for i=1:columns
 	end
 
 	ylimits(1)=min(density);
-	ylimits(2)=ceil(max(density)*1e2)/1e2;
+	ylimits(2)=ceil(max(density)*1e3)/1e3;
 
 	if ylimits(1)<ylimits(2)
 		set(gca,'YLim',ylimits,'YTick',ylimits);

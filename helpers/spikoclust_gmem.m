@@ -1,7 +1,5 @@
-function [newmodel]=gmem(DATA,INIT,NCLUST,varargin)
+function [newmodel]=spikoclust_gmem(DATA,INIT,NCLUST,varargin)
 %EM for Gaussian mixture with support for outlier distribution
-%
-%
 %
 % all credit to Daniel Wagenaar's code
 % http://www.danielwagenaar.net/res/papers/00-Wage2.pdf

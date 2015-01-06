@@ -1,5 +1,5 @@
-function SPIKELESS=ephys_spike_removespikes(DATA,SPIKES)
-%
+function SPIKELESS=spikoclust_spike_remove(DATA,SPIKES)
+%Removes spikes from data
 %
 %
 %

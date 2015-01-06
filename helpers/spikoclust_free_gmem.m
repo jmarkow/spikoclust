@@ -1,7 +1,6 @@
-function [newmodel]=free_gmem(DATA,INIT,NCLUST,varargin)
-%EM for Gaussian mixture with support for outlier distribution
-%
-%
+function [newmodel]=spikoclust_free_gmem(DATA,INIT,NCLUST,varargin)
+%EM for Gaussian mixture with support for outlier distribution, performs
+%model selection on the fly
 %
 % all credit to Daniel Wagenaar's code
 % http://www.danielwagenaar.net/res/papers/00-Wage2.pdf

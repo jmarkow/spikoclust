@@ -1,4 +1,4 @@
-function fig_num=ephys_visual_cluststats(CLUSTER,varargin)
+function fig_num=spikoclust_visual_clustering(CLUSTER,varargin)
 %cluster statistics, include Fisher projection and other quality metrics
 %
 %
@@ -118,7 +118,7 @@ subaxis(nrows,ncols,1,1,2,spikeheight,'margin',left_margin,'spacingvert',left_sp
 spikoclust_visual_simplewaveforms(CLUSTER.windows,'spike_fs',spike_fs,'fig_num',fig_num,'legend_labels',legends);
 xlabel('');
 ylabel('Amplitude ($\mu$Volts)','interpreter','latex');
-set(gca,'ticklength',[0 0],'linewidth',1);
+set(gca,'ticklength',[0 0],'linewidth',1,'FontSize',11);
 
 % move to the top right for the Fisher plot
 % top right, Fisher projection
@@ -151,7 +151,7 @@ if multi_clust
 		patch(xcoord,ycoord2,1,'facecolor',colors(clustercombos(i,2),:),...
 			'edgecolor','none');
 
-		set(gca,'FontSize',12,'FontName','Helvetica','linewidth',1);
+		set(gca,'FontSize',11,'FontName','Helvetica','linewidth',1);
 		set(gca,'layer','top','linewidth',1,'ticklength',[0 0]);
 		box off;
 		axis tight;
@@ -181,7 +181,7 @@ for i=1:K
 		'fig_num',fig_num,'type','auto','maxlag',maxlag,'xres',xres,...
 		'color',colors(i,:));
 
-	set(gca,'FontSize',12,'FontName','Helvetica','linewidth',1);
+	set(gca,'FontSize',11,'FontName','Helvetica','linewidth',1);
 	set(gca,'xtick',[-maxlag*1e3:50:maxlag*1e3],'ticklength',[0 0],'layer','top');
 
 	if i==K
@@ -211,7 +211,7 @@ if multi_clust
 			'fig_num',fig_num,'type','cross','maxlag',maxlag,'xres',xres,...
 			'color',crosscolor);
 
-		set(gca,'FontSize',12,'FontName','Helvetica','linewidth',1);
+		set(gca,'FontSize',11,'FontName','Helvetica','linewidth',1);
 		set(gca,'xtick',[-maxlag*1e3 maxlag*1e3],'ticklength',[0 0],'layer','top');
 
 		if i==1

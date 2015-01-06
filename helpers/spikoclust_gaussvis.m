@@ -1,5 +1,5 @@
-function fig_num=gaussvis(MODEL,DATA,varargin)
-%
+function fig_num=spikoclust_gaussvis(MODEL,DATA,varargin)
+%Visualizes GMM returned from spikoclust_sort
 %
 %
 %

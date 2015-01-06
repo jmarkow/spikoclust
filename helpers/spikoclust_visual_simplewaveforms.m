@@ -1,5 +1,5 @@
-function fig_num=ephys_visual_clustresults(SPIKEWINDOWS,varargin)
-%spike statistics figure, include 2D histogram and ISI distribution
+function fig_num=spikoclust_visual_simplewaveforms(SPIKEWINDOWS,varargin)
+%Just plots mean +/- std
 %
 %
 %

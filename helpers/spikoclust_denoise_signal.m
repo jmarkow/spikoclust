@@ -1,17 +1,9 @@
-function [DATA,CAR]=ephys_denoise_signal(EPHYS_DATA,CHIN,CHOUT,varargin)
-%takes ephys data from Intan recordings and re-references
+function [DATA,CAR]=spikoclust_denoise_signal(EPHYS_DATA,CHIN,CHOUT,varargin)
+%Denoises signal using specified method
 %
 %
 %
 %
-
-% how to denoise the raw signal, CAR or nearest neighbor
-
-% CHOUT is the channel mapping for the output, CHIN for the input
-
-% i.e. if EPHYS_DATA contains channels 1,2,4,5,6 then CHIN is 1:6
-% and if you only want to return channels 1 and 2 set CHOUT to 1:2
-
 
 if nargin<3 | isempty(CHOUT), CHOUT=CHIN; end
 
@@ -41,12 +33,6 @@ for i=1:2:nparams
 end
 
 CAR=[];
-
-
-% intan nearest neighbor mapping
-
-channel_map=[4 3 2 1 16 15 14 13 5 6 7 8 9 10 11 12];
-channel_ref=[3 4 3 2 1 16 15 14 6 5 6 7 8 9 10 11];
 
 exclude_channels=[];
 
@@ -106,23 +92,8 @@ switch lower(method)
 			error('Data must contain at least two dimensions!');
 		end
 
-	case 'nn'
 
-		if ndims_ephys==3
-			for i=1:length(chmap)
-				DATA(:,:,i)=EPHYS_DATA(:,:,chmap(i))-EPHYS_DATA(:,:,find(channel_map==chmap(i)));
-			end
-		elseif ndims_ephys==2
-			for i=1:length(chmap)
-				DATA(:,i)=EPHYS_DATA(:,:,chmap(i))-EPHYS_DATA(:,find(channel_map==chmap(i)));
-			end
-		else
-			error('Data must contain at least two dimensions!');			
-		end
-
-
-
-    otherwise
+    	otherwise
 
 
 		if ndims_ephys==3

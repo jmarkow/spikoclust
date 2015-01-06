@@ -1,4 +1,4 @@
-function EPHYS_DATA=ephys_condition_signal(EPHYS_DATA,DATA_TYPE,varargin)
+function EPHYS_DATA=spikoclust_condition_signal(EPHYS_DATA,DATA_TYPE,varargin)
 %conditions signals for further processing
 %
 %

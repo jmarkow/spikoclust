@@ -1,9 +1,8 @@
-function ISI=get_spike_correlogram(SPIKES1,SPIKES2,varargin)
-%Computes the ISI vector from clust_spike_vec
+function spikoclust_correlogram(SPIKES1,SPIKES2,varargin)
+%Computes and displays the correlogram for two sets of spiketimes (use the same set
+%to get the autocorrelogram)
 %
 %
-
-% get the total number of spikes
 
 nparams=length(varargin);
 
@@ -18,8 +17,6 @@ maxlag=.2;
 type='auto';
 
 color=[0 0 0];
-
-% just in case add the hot colormap at the end
 
 for i=1:2:nparams
 	switch lower(varargin{i})

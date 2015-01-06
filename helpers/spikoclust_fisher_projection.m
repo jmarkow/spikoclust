@@ -1,5 +1,5 @@
-function [DENSITY1,DENSITY2,XI]=fisher_projection(DATAMAT1,DATAMAT2,varargin)
-%cluster statistics, include Fisher projection and other quality metrics
+function [DENSITY1,DENSITY2,XI]=spikoclust_fisher_projection(DATAMAT1,DATAMAT2,varargin)
+%Computes the fisher projection of two data matrices
 %
 %
 %

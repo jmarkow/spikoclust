@@ -1,4 +1,4 @@
-function IFRVEC=ephys_ifr(SPIKETIMES,TIMEVECTOR,FS)
+function IFRVEC=spikoclust_ifr(SPIKETIMES,TIMEVECTOR,FS)
 %computes IFR per the Hahnloser et al. 2001 definition
 %
 

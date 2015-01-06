@@ -1,11 +1,14 @@
-function [cluster spikeless]=ephys_spikesort(EPHYS_DATA,varargin)
-%spike sorting without automated visualizations (as in ephys_visual_sua)
+function [cluster spikeless]=spikoclust_sort(EPHYS_DATA,FS,varargin)
+%CLI-driven Gaussian mixture model-based spike sorting
 %
 %	[cluster spikeless]=ephys_spikesort(EPHYS_DATA,varargin)
 %
 %	EPHYS_DATA
-%	Data for spike sorting (samples x trials x channels)
+%	data for spike sorting (samples x trials x channels)
 %
+%	FS
+%	sampling rate of data
+%	
 %	the following may be specified as parameter/value pairs:
 %
 %		interpolate_f
@@ -20,9 +23,6 @@ function [cluster spikeless]=ephys_spikesort(EPHYS_DATA,varargin)
 %
 %		car_exclude
 %		carelectrodes to exclude from noise estimate
-%
-%		fs
-%		data sampling rate (default: 25e3)
 %		
 %		noise
 %		noise rejection method ('car' for common average 'nn' for nearest neighbor, or 'none',
@@ -60,7 +60,7 @@ function [cluster spikeless]=ephys_spikesort(EPHYS_DATA,varargin)
 %		include a garbage-collecting uniform density in GMM clustering (0 or 1, default: 1)
 %
 %		smem
-%		use split-and-merge algorithm for GMM clustering (0, 1, or 2 forr FREE smem, default: 1)
+%		use split-and-merge algorithm for GMM clustering (0, 1, or 2 for FREE smem, default: 1)
 %	
 %		maxnoisetraces
 %		maximum number of noise traces to use in spike whitening (default: 1e6)
@@ -86,14 +86,13 @@ function [cluster spikeless]=ephys_spikesort(EPHYS_DATA,varargin)
 %	the following outputs are returned by the script:
 %
 %	cluster
-%   structure that contains clustering results, each field is a cell array,
-%   where cell n is the results for cluster n
+%   	structure that contains clustering results, each field is a cell array, where cell n is the results for cluster n
 %
 %	spikeless
-%   spike data with the spikes removed
+%	spike data with the spikes removed
 %
 %
-% see also ephys_visual_sua.m,spikoclust_autosort.m,spikoclust_guisort.m,spikoclust_spike_detect.m
+% see also spikoclust_autosort.m,spikoclust_guisort.m,spikoclust_spike_detect.m
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PARAMETER COLLECTION %%%%%%%%%%%%%%%%%
@@ -114,50 +113,45 @@ if mod(nparams,2)>0
 	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
 end
 
-fs=30e3;
 noise='none'; % none, nn for nearest neighbor, or car for common average
-car_exclude=[];
+car_exclude=[]; % exclude any channels for common average?
 
 % 300 Hz E high-pass, see Quiroga et al. 2013
 
 freq_range=[400]; % bandpassing <10e3 distorted results, reasoning that >800 Hz is fine for spikes < 1ms long
 filt_type='high'; % high,low or bandpass
-filt_order=3;
-filt_name='e';
+filt_order=3; % filter order
+filt_name='e'; % filter type, e for elliptic and b for butterworth
 auto_clust=1; % 0 for manual cluster cutting (GUI), 1 for automated clustering
 noise='none'; % none, nn for nearest neighbor, or car for common average
 
 tetrode_channels=[];
 sigma_t=4; % multiple of noise estimate for spike threshold (generally 3-4, using Quiroga's method)
 jitter=10; % max jitter in samples for spike re-alignment (4 is reasonable
-subtrials=[];
 align_method='min'; % how to align spike waveforms can be min, max or com for center-of-mass
-method='n';
-interpolate_f=8; % interpolate factor
-sort_f=[]; % if empty, downsamples back to original fs
+interpolate_f=8; % interpolate factor (fs*interpolate_f)
+sort_f=[]; % if empty, downsamples back to original fs (advised to leave empty)
+detect_method='n';
 
-smooth_rate=1e3;
-car_trim=40;
-decomp_level=7;
+car_trim=40; % common average using the trimmed mean (car_trim/2 is percent cut off from either edge)
+decomp_level=7; % wavelet decomposition level (not used unless wavelet_denoise is set to 1)
+wavelet_denoise=0; % wavelet denoise?
 
-spike_window=[.0005 .0005];
-cluststart=1:8;
-pcs=2;
-garbage=1;
-smem=1;
+spike_window=[.0005 .0005]; % window to the left and right of the detected spike time to use for sorting
+cluststart=1:8; % number of neurons to check for 
+pcs=2; % number of principal components to use
+garbage=1; % use a garbage collecting uniform density in the mixture?
+smem=1; % split-and-merge or standard EM?
 
-spikeworkers=1;
-modelselection='icl';
-maxnoisetraces=1e6;
-wavelet_denoise=0;
-noisewhiten=1;
+spikeworkers=1; % only used in other packages, can safely ignore
+modelselection='icl'; % how to select the number of neurons, 'bic', 'aic', or 'icl' (bic or icl recommended)
+maxnoisetraces=1e6; % not recommended to change, upper bound on number of noise traces used for noise whitening
+noisewhiten=1; % enable noies whitening?
 
 % remove eps generation, too slow here...
 
 for i=1:2:nparams
 	switch lower(varargin{i})
-		case 'fs'
-			fs=varargin{i+1};
 		case 'noise'
 			noise=varargin{i+1};
 		case 'sigma_t'
@@ -186,8 +180,6 @@ for i=1:2:nparams
 			spike_window=varargin{i+1};
 		case 'sort_f'
 			sort_f=varargin{i+1};
-		case 'method'
-			method=varargin{i+1};
 		case 'maxnoisetraces'
 			maxnoisetaces=varargin{i+1};
 		case 'filt_order'
@@ -214,6 +206,8 @@ for i=1:2:nparams
 			noisewhiten=varargin{i+1};
 		case 'decomp_level'
 			decomp_level=varargin{i+1};
+		case 'detect_method'
+			detect_method=varargin{i+1};
 	end
 end
 
@@ -222,7 +216,7 @@ if isempty(sort_f)
 	disp(['Setting sort downsample factor to spike upsample factor:  ' num2str(sort_f)]);
 end
 
-interpolate_fs=fs*interpolate_f;
+interpolate_fs=FS*interpolate_f;
 sort_fs=interpolate_fs/sort_f;
 
 [samples,ntrials,ncarelectrodes]=size(EPHYS_DATA);
@@ -235,7 +229,7 @@ end
 channels=1:ncarelectrodes;
 proc_data=zeros(samples,ntrials,length(channels));
 
-TIME=[1:samples]./fs; % time vector for plotting
+TIME=[1:samples]./FS; % time vector for plotting
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SIGNAL CONDITIONING %%%%%%%%%%%%%%%%
@@ -255,10 +249,6 @@ else
 end
 
 clear EPHYS_DATA;
-
-if ~isempty(tetrode_channels)
-	tetrode_data=tetrode_data(:,subtrials,:);
-end
 
 [samples,ntrials,newchannels]=size(proc_data);
 
@@ -292,8 +282,8 @@ for j=1:ntrials
 	%spikethreshold=10;
 	% get the threshold crossings (based on first channel)
 
-	spikes(j)=spikoclust_spike_detect(squeeze(sort_data(:,j,:)),spikethreshold,'fs',fs,'visualize','n','align_method',align_method,...
-		'jitter',jitter,'window',spike_window,'method',method);
+	spikes(j)=spikoclust_spike_detect(squeeze(sort_data(:,j,:)),spikethreshold,'fs',FS,'visualize','n','align_method',align_method,...
+		'jitter',jitter,'window',spike_window,'method',detect_method);
 
 	% get the spikeless data
 
@@ -304,7 +294,7 @@ for j=1:ntrials
 
 	for k=2:nchannels
 		tmp_thresh=sigma_t*median(abs(sort_data(:,j,k))/.6745);
-		tmp_spikes=spikoclust_spike_detect(squeeze(sort_data(:,j,k)),tmp_thresh,'fs',fs,'visualize','n','align_method',align_method,...
+		tmp_spikes=spikoclust_spike_detect(squeeze(sort_data(:,j,k)),tmp_thresh,'fs',FS,'visualize','n','align_method',align_method,...
 			'window',spike_window);
 		tmp=ephys_spike_removespikes(sort_data(:,j,k),tmp_spikes);
 		spikeless{k}=[spikeless{k};tmp];
@@ -323,7 +313,7 @@ clear sort_data;
 
 disp(['Channel ' num2str(channels)]);
 
-cluster.parameters.fs=fs;
+cluster.parameters.fs=FS;
 cluster.parameters.interpolate_fs=interpolate_fs;
 cluster.parameters.sort_fs=sort_fs;
 cluster.parameters.threshold=threshold;
@@ -335,7 +325,7 @@ if auto_clust
 	[cluster.windows cluster.times cluster.trials cluster.isi cluster.stats... 
 		cluster.outliers cluster.spikedata cluster.model]=...
 		spikoclust_autosort(spikes,spikeless,...
-			'fs',fs,'interpolate_fs',interpolate_fs,'proc_fs',sort_fs,...
+			'fs',FS,'interpolate_fs',interpolate_fs,'proc_fs',sort_fs,...
 			'maxnoisetraces',maxnoisetraces,'cluststart',cluststart,'pcs',pcs,...
 			'workers',spikeworkers,'garbage',garbage,'smem',smem,'modelselection',...
 			modelselection,'align_method',align_method,'noisewhiten',noisewhiten);
@@ -343,7 +333,7 @@ else
 	[cluster.windows cluster.times cluster.trials cluster.isi cluster.stats...
 		cluster.outliers cluster.spikedata cluster.model]=...
 		spikoclust_guisort(spikes,spikeless,cluster.parameters,...
-			'fs',fs,'interpolate_fs',interpolate_fs,'proc_fs',sort_fs,...
+			'fs',FS,'interpolate_fs',interpolate_fs,'proc_fs',sort_fs,...
 			'maxnoisetraces',maxnoisetraces,'cluststart',cluststart,'pcs',pcs,...
 			'workers',spikeworkers,'garbage',garbage,'smem',smem,'modelselection',...
 			modelselection,'align_method',align_method,'noisewhiten',noisewhiten);
@@ -370,7 +360,7 @@ if ~isempty(cluster.windows)
 
 			% IFR will use the current sampling rate
 
-			IFR{j}(k,:)=spikoclust_ifr(round(clusterspikes),samples,fs);
+			IFR{j}(k,:)=spikoclust_ifr(round(clusterspikes),samples,FS);
 
 		end
 	end

@@ -1,7 +1,5 @@
-function CLUSTER=ephys_cluster_autostats(CLUSTER,SPIKELESS,varargin)
-%
-%
-%
+function CLUSTER=spikoclust_autostats(CLUSTER,SPIKELESS,varargin)
+%script for visualizing the results of clustering
 %
 
 nparams=length(varargin);
@@ -10,7 +8,7 @@ if mod(nparams,2)>0
 	error('Parameters must be specified as parameter/value pairs');
 end
 
-savemode=1;
+savemode=0;
 savedir=pwd;
 savefilename_stats='stats';
 ntrials=[];

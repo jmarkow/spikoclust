@@ -1,4 +1,4 @@
-function [COEFFS]=get_geoemetric_coefficients(WAVEFORMS)
+function [COEFFS]=spikoclust_shape_features(WAVEFORMS)
 %
 %
 %
