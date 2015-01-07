@@ -190,8 +190,6 @@ for i=1:2:nparams
 			car_trim=varargin{i+1};
 		case 'pcs'
 			pcs=varargin{i+1};
-		case 'pcs'
-			pcs=varargin{i+1};
 		case 'garbage'
 			garbage=varargin{i+1};
 		case 'smem'
@@ -238,7 +236,6 @@ proc_data=spikoclust_denoise_signal(EPHYS_DATA,channels,channels,'method',noise,
 proc_data=spikoclust_condition_signal(proc_data,'s','freq_range',...
 	freq_range,'filt_type',filt_type,'filt_order',filt_order,'filt_name',filt_name,...
 	'wavelet_denoise',wavelet_denoise,'decomp_level',decomp_level);
-
 
 if ~isempty(tetrode_channels)
 	tetrode_data=spikoclust_denoise_signal(EPHYS_DATA,channels,tetrode_channels,'method',noise,'car_exclude',car_exclude,'car_trim',car_trim);
