@@ -190,8 +190,6 @@ for i=1:2:nparams
 			car_trim=varargin{i+1};
 		case 'pcs'
 			pcs=varargin{i+1};
-		case 'pcs'
-			pcs=varargin{i+1};
 		case 'garbage'
 			garbage=varargin{i+1};
 		case 'smem'
