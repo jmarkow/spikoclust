@@ -239,6 +239,9 @@ proc_data=spikoclust_condition_signal(proc_data,'s','freq_range',...
 	freq_range,'filt_type',filt_type,'filt_order',filt_order,'filt_name',filt_name,...
 	'wavelet_denoise',wavelet_denoise,'decomp_level',decomp_level);
 
+if length(channels)>1
+	tetrode_channels=channels(2:end);
+end
 
 if ~isempty(tetrode_channels)
 	tetrode_data=spikoclust_denoise_signal(EPHYS_DATA,channels,tetrode_channels,'method',noise,'car_exclude',car_exclude,'car_trim',car_trim);
