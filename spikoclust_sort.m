@@ -297,7 +297,7 @@ for j=1:ntrials
 		tmp_thresh=sigma_t*median(abs(sort_data(:,j,k))/.6745);
 		tmp_spikes=spikoclust_spike_detect(squeeze(sort_data(:,j,k)),tmp_thresh,'fs',FS,'visualize','n','align_method',align_method,...
 			'window',spike_window);
-		tmp=ephys_spike_removespikes(sort_data(:,j,k),tmp_spikes);
+		tmp=spikoclust_spike_remove(sort_data(:,j,k),tmp_spikes);
 		spikeless{k}=[spikeless{k};tmp];
 	end
 
