@@ -21,7 +21,7 @@ Download a release or simply clone the repository.  Add all directories in the r
 
 ### Quick start
 
-This toolbox assumes that your data is organized into a samples x trials double-precision Matrix.  For example, if your matrix is 10e3 rows x 100 columns, then the script assumes there are 10e3 time samples and 100 trials (1 trial is fine).      To sort your data, try 
+This toolbox assumes that your data is organized into a samples x trials x channels double-precision Matrix.  For example, if your matrix is 10e3 rows x 100 columns x 1, then the script assumes there are 10e3 time samples and 100 trials (1 trial is fine). To sort your data, try 
 
 ```
 >>cluster=spikoclust_sort(mydata,24e3,'align_method','min','auto_clust',1,'freq_range',[400 6e3]);
@@ -42,6 +42,8 @@ You should see the following three windows.
 
 ![Stats window A](/spikoclust_demo_1.png?raw=true "Stats window A") ![Stats window B](/spikoclust_demo_2.png?raw=true "Stats window B") ![Stats window C](/spikoclust_demo_3.png?raw=true "Stats window C")
 
+If you want to sort tetrode data, pass a matrix with additional channels (e.g. 10e3 x 100 x 4 would be 10e3 samples by 100 trials by 4 channels).  The first channel is the "master" channel, i.e. spikes will be detected on this channel, and those timepoints will be used to select windows from the other 3 channels.  Windows from the other 3 channels will be appended to the first window before computing the principal components for spike sorting.
+
 ###Script options
 
 Yes there are many options, but many of the defaults should be "sensible" for typical spike sorting applications.  The options, with a description and their default settings, are listed in the following table:
@@ -58,7 +60,7 @@ Yes there are many options, but many of the defaults should be "sensible" for ty
 | `detect_method` | Detect negative-going spikes, positive-going spikes, or both | string | `n`,`p`,`b` |
 | `spike_window` | Size of spike window (in s before and after spike) | 2 element vector of floats (s) | N/A | [.0005 .0005] |
 | `interp_f` | Interpolation factor (interpolate spikes by a factor of N) | integer | N/A | `8` | 
-| `align_method` | Feature used for spike re-alignment | string | `min`,`max`,`com` | `min` |
+| `align_feature` | Feature used for spike re-alignment | string | `min`,`max`,`com` | `min` |
 | `jitter` | Limit on number of samples a spike may be moved for re-alignment | integer | N/A | `10` |
 | `gui_clust` | Use the GUI assistant | logic | N/A | `1` |
 | `clust_check` | Number of spikes to check for | vector of integers | N/A | `[2:8]` |

@@ -46,7 +46,7 @@ workers=1;
 garbage=1;
 smem=1;
 modelselection='icl';
-align_method='min';
+align_feature='min';
 regularize=.01;
 noisewhiten=1;
 
@@ -72,8 +72,8 @@ for i=1:2:nparams
 			proc_fs=varargin{i+1};
 		case 'noisewhiten'
 			noisewhiten=varargin{i+1};
-		case 'align_method'
-			align_method=varargin{i+1};
+		case 'align_feature'
+			align_feature=varargin{i+1};
 		case 'spike_window'
 			spike_window=varargin{i+1};
 	end
@@ -137,7 +137,7 @@ for j=1:length(SPIKES)
 	%spikemask([1:15 end-15:end],:,:)=0;
 	%SPIKES(j).windows=SPIKES(j).windows.*spikemask;
 
-	alignspikes=spikoclust_upsample_align(SPIKES(j),'interpolate_fs',interpolate_fs,'align_method',align_method);	
+	alignspikes=spikoclust_upsample_align(SPIKES(j),'interpolate_fs',interpolate_fs,'align_feature',align_feature);	
 	CLUSTSPIKES(j)=alignspikes;
 
 	% cluster with the decimated spikes

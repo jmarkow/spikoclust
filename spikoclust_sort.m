@@ -65,7 +65,7 @@ function [cluster spikeless]=spikoclust_sort(EPHYS_DATA,FS,varargin)
 %		maxnoisetraces
 %		maximum number of noise traces to use in spike whitening (default: 1e6)
 %
-%		align_method
+%		align_feature
 %		method for spike alignment ('min','max', or 'com', default: 'min');
 %		
 %		noise
@@ -127,7 +127,7 @@ gui_clust=0; % use GUI?
 tetrode_channels=[];
 sigma_t=4; % multiple of noise estimate for spike threshold (generally 3-4, using Quiroga's method)
 jitter=10; % max jitter in samples for spike re-alignment (4 is reasonable
-align_method='min'; % how to align spike waveforms can be min, max or com for center-of-mass
+align_feature='min'; % how to align spike waveforms can be min, max or com for center-of-mass
 interpolate_f=8; % interpolate factor (fs*interpolate_f)
 sort_f=[]; % if empty, downsamples back to original fs (advised to leave empty)
 detect_method='n';
@@ -169,8 +169,8 @@ for i=1:2:nparams
 			spikesort=varargin{i+1};
 		case 'gui_clust'
 			gui_clust=varargin{i+1};
-		case 'align_method'
-			align_method=varargin{i+1};
+		case 'align_feature'
+			align_feature=varargin{i+1};
 		case 'jitter'
 			jitter=varargin{i+1};
 		case 'interpolate_f'
@@ -256,7 +256,7 @@ clear EPHYS_DATA;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SPIKE DETECTION %%%%%%%%%%%%%%%%%%%%
 
 disp('Entering spike detection...');
-disp(['Alignment method:  ' align_method]);
+disp(['Alignment method:  ' align_feature]);
 disp(['Interpolate FS:  ' num2str(interpolate_fs)]);
 % need a noise cutoff...let's start with 3*std or Quiroga's measure
 
@@ -282,7 +282,7 @@ for j=1:ntrials
 	%spikethreshold=10;
 	% get the threshold crossings (based on first channel)
 
-	spikes(j)=spikoclust_spike_detect(squeeze(sort_data(:,j,:)),spikethreshold,'fs',FS,'visualize','n','align_method',align_method,...
+	spikes(j)=spikoclust_spike_detect(squeeze(sort_data(:,j,:)),spikethreshold,'fs',FS,'visualize','n','align_feature',align_feature,...
 		'jitter',jitter,'window',spike_window,'method',detect_method);
 
 	% get the spikeless data
@@ -294,7 +294,7 @@ for j=1:ntrials
 
 	for k=2:nchannels
 		tmp_thresh=sigma_t*median(abs(sort_data(:,j,k))/.6745);
-		tmp_spikes=spikoclust_spike_detect(squeeze(sort_data(:,j,k)),tmp_thresh,'fs',FS,'visualize','n','align_method',align_method,...
+		tmp_spikes=spikoclust_spike_detect(squeeze(sort_data(:,j,k)),tmp_thresh,'fs',FS,'visualize','n','align_feature',align_feature,...
 			'window',spike_window);
 		tmp=spikoclust_spike_remove(sort_data(:,j,k),tmp_spikes);
 		spikeless{k}=[spikeless{k};tmp];
@@ -319,7 +319,7 @@ cluster.parameters.sort_fs=sort_fs;
 cluster.parameters.threshold=threshold;
 cluster.parameters.tetrode_channels=tetrode_channels;
 cluster.parameters.spike_window=spike_window;
-cluster.parameters.align_method=align_method;
+cluster.parameters.align_feature=align_feature;
 
 if ~gui_clust
 	[cluster.windows cluster.times cluster.trials cluster.isi cluster.stats... 
@@ -328,7 +328,7 @@ if ~gui_clust
 			'fs',FS,'interpolate_fs',interpolate_fs,'proc_fs',sort_fs,...
 			'maxnoisetraces',maxnoisetraces,'cluststart',cluststart,'pcs',pcs,...
 			'workers',spikeworkers,'garbage',garbage,'smem',smem,'modelselection',...
-			modelselection,'align_method',align_method,'noisewhiten',noisewhiten);
+			modelselection,'align_feature',align_feature,'noisewhiten',noisewhiten);
 else
 	[cluster.windows cluster.times cluster.trials cluster.isi cluster.stats...
 		cluster.outliers cluster.spikedata cluster.model]=...
@@ -336,7 +336,7 @@ else
 			'fs',FS,'interpolate_fs',interpolate_fs,'proc_fs',sort_fs,...
 			'maxnoisetraces',maxnoisetraces,'cluststart',cluststart,'pcs',pcs,...
 			'workers',spikeworkers,'garbage',garbage,'smem',smem,'modelselection',...
-			modelselection,'align_method',align_method,'noisewhiten',noisewhiten);
+			modelselection,'align_feature',align_feature,'noisewhiten',noisewhiten);
 end
 
 

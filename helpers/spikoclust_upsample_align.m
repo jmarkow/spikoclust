@@ -7,7 +7,7 @@ function NEWSPIKES=spikoclust_upsample_align(SPIKES,varargin)
 
 visualize='y';
 interpolate_fs=200e3; % what fs should we intepolate to? (50e3 has worked in my hands, consider going higher for low SNR)
-align_method='min'; % COM is not the most reliable for me  ('min' and 'max' work well)
+align_feature='min'; % COM is not the most reliable for me  ('min' and 'max' work well)
 peak_frac=.6; % fraction of peak to use as cutoff for COM calculation (i.e. all samples below peak_frac*peak are included)
 peak_width=4; % how many samples about the peak to include in COM (interpolated space, 5-8 is reasonable here for 50e3 fs)
 auto_factor=1.8; % fraction that max must exceed min to use for alignment (1.2=20% higher)
@@ -30,8 +30,8 @@ for i=1:2:nparams
 			visualize=varargin{i+1};
 		case 'interpolate_fs'
 			interpolate_fs=varargin{i+1};
-		case 'align_method'
-			align_method=varargin{i+1};
+		case 'align_feature'
+			align_feature=varargin{i+1};
 		case 'tetrode_data'
 			tetrode_data=varargin{i+1};
 		case 'auto_factor'
@@ -121,7 +121,7 @@ for i=1:nspikes
 	% align by com (center of mass), min or max
 	% first realign to min or max, whichever is more reliable
 
-	switch lower(align_method)
+	switch lower(align_feature)
 
 		case 'com'
 
@@ -249,7 +249,7 @@ for i=1:nspikes
 
 	if isfield(SPIKES,'storewindows') 
 			
-		switch lower(align_method)
+		switch lower(align_feature)
 
 			case 'com'
 
