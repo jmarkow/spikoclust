@@ -118,7 +118,7 @@ for i=1:columns
 	if i==1
 		ylabel('Voltage ($\mu$Volts)','FontName','Helvetica','FontSize',12,'interpreter','latex');
 	end
-	set(gca,'layer','top');
+	set(gca,'layer','top','xtick',[]);
 	box off
 	axis tight;
 
