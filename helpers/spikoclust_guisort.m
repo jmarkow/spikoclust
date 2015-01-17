@@ -519,6 +519,8 @@ nclust=length(clusters);
 
 % number of spikes per cluster is simply the number of labels
 
+%%%%% rearrange code start
+
 nspikes=[];
 
 for i=1:nclust
@@ -534,6 +536,14 @@ LABELS=zeros(size(idx));
 for i=1:nclust
 	LABELS(idx==clusters(loc(i)))=i;	
 end
+
+
+clustermodel.R(:,1:nclust)=clustermodel.R(:,loc);
+clustermodel.mixing(1:nclust)=clustermodel.mixing(loc);
+clustermodel.sigma=clustermodel.sigma(:,:,loc);
+clustermodel.mu=clustermodel.mu(loc,:);
+
+%%%% rearrange code end (comment out to not sort clusters by nspikes)
 
 % return labels, and windows and ISI sorted by cluster IDX
 

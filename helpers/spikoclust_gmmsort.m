@@ -9,7 +9,7 @@ fs=25e3;
 proc_fs=25e3; % downsample the spikes by a factor of 4 and upsample the noise by
 
 maxnoisetraces=1e6; % maximum number of noise traces to use for Cholesky decomposition
-cluststart=1:6; % number of clusters to start with
+clust_check=1:6; % number of clusters to start with
 pcs=2; % number of PCs to use for clustering
 pcareplicates=5; % replicates for robust pca
 clustreplicates=1; % replicates for clustering procedure
@@ -25,8 +25,8 @@ end
 
 for i=1:2:nparams
 	switch lower(varargin{i})
-		case 'cluststart'
-			cluststart=varargin{i+1};
+		case 'clust_check'
+			clust_check=varargin{i+1};
 		case 'interpolate_fs'
 			interpolate_fs=varargin{i+1};
 		case 'fs'
@@ -60,7 +60,7 @@ end
 % get the covariance matrix of the noise
 
 disp(['Sort fs ' num2str(proc_fs)]);
-disp(['Starting clusters ' num2str(cluststart)]);
+disp(['Starting clusters ' num2str(clust_check)]);
 disp(['PCS:  ' num2str(pcs)]);
 disp(['Garbage collection: ' num2str(garbage)]);
 disp(['SMEM:  ' num2str(smem)]);
@@ -133,12 +133,12 @@ if smem==2
 	startobj=struct('mu',startmu,'sigma',startcov,'mixing',mixing);
 
 	loglikelihood=zeros(1,clustreplicates);
-	idx=kmeans(newscore(:,1:rankcut),cluststart(1),'replicates',5);
+	idx=kmeans(newscore(:,1:rankcut),clust_check(1),'replicates',5);
 
 	%% set up initial model
 
 	mu=[];
-	for i=1:cluststart(1)
+	for i=1:clust_check(1)
 		startmu(i,:)=mean(newscore(idx==i,1:rankcut))';
 		startcov(:,:,i)=diag(var(newscore(:,1:rankcut)));
 	end
@@ -146,12 +146,12 @@ if smem==2
 	startobj.mu=startmu;
 	startobj.sigma=startcov;
 
-	for i=1:cluststart(1)
+	for i=1:clust_check(1)
 		startobj.mixing(i)=sum(idx==i)/length(idx);
 	end
 
 	for i=1:clustreplicates
-		tmpclustobj{i}=spikoclust_free_gmem(newscore(:,1:rankcut),startobj,cluststart(1),...
+		tmpclustobj{i}=spikoclust_free_gmem(newscore(:,1:rankcut),startobj,clust_check(1),...
 			'garbage',garbage,'merge',smem,'debug',0);
 		loglikelihood(i)=tmpclustobj{i}.likelihood;
 	end
@@ -159,7 +159,7 @@ if smem==2
 	[~,loc]=max(loglikelihood);
 	clustermodel=tmpclustobj{loc(1)};
 else
-	for i=1:1:length(cluststart)
+	for i=1:1:length(clust_check)
 
 		tmpclustobj={};
 		startmu=[];
@@ -169,12 +169,12 @@ else
 		startobj=struct('mu',startmu,'sigma',startcov,'mixing',mixing);
 
 		loglikelihood=zeros(1,clustreplicates);
-		idx=kmeans(newscore(:,1:rankcut),cluststart(i),'replicates',5);
+		idx=kmeans(newscore(:,1:rankcut),clust_check(i),'replicates',5);
 
 		%% set up initial model
 
 		mu=[];
-		for j=1:cluststart(i)
+		for j=1:clust_check(i)
             selection=find(idx==j);
             
             % bugfix, if only one sample then mean collapses to single
@@ -193,12 +193,12 @@ else
 		startobj.mu=startmu;
 		startobj.sigma=startcov;
 
-		for j=1:cluststart(i)
+		for j=1:clust_check(i)
 			startobj.mixing(j)=sum(idx==j)/length(idx);
 		end
 
 		for j=1:clustreplicates
-			tmpclustobj{j}=spikoclust_gmem(newscore(:,1:rankcut),startobj,cluststart(i),...
+			tmpclustobj{j}=spikoclust_gmem(newscore(:,1:rankcut),startobj,clust_check(i),...
 				'garbage',garbage,'merge',smem,'debug',0);
 			loglikelihood(j)=tmpclustobj{j}.likelihood;
 		end

@@ -24,7 +24,7 @@ fs=25e3;
 interpolate_fs=200e3;
 proc_fs=25e3;
 maxnoisetraces=1e6;
-cluststart=10;
+clust_check=10;
 pcs=4;
 workers=1;
 garbage=1;
@@ -58,8 +58,8 @@ for i=1:2:nparams
 			maxnoisetaces=varargin{i+1};
 		case 'ranklimit'
 			ranklimit=varargin{i+1};
-		case 'cluststart'
-			cluststart=varargin{i+1};
+		case 'clust_check'
+			clust_check=varargin{i+1};
 		case 'pcs'
 			pcs=varargin{i+1};
 		case 'garbage'
@@ -184,12 +184,15 @@ clearvars SPIKES CLUSTSPIKES clusterspikewindowscell storespikewindowscell;
 [idx spikedata MODEL]=spikoclust_gmmsort(clusterspikewindows,...
 	'proc_fs',proc_fs,'fs',fs,'interpolate_fs',interpolate_fs,...
 	'smem',smem,'garbage',garbage,'maxnoisetraces',maxnoisetraces,...
-	'cluststart',cluststart,'pcs',pcs,'workers',workers,'modelselection',...
+	'clust_check',clust_check,'pcs',pcs,'workers',workers,'modelselection',...
 	modelselection);
 
 features=size(spikedata,2); % what's the dimensionality of the data used for sorting?
-clusters=unique(idx(idx>0)); % how many clusters?
-nclust=length(clusters);
+%clusters=unique(idx(idx>0)); % how many clusters?
+%nclust=length(clusters);
+
+nclust=size(MODEL.mu,1);
+clusters=1:nclust;
 
 % number of spikes per cluster is simply the number of labels
 
@@ -202,14 +205,17 @@ end
 [val loc]=sort(nspikes,'descend');
 
 % make the number contiguous and sort by number of spikes, descending
-
+LABELS=idx;
 LABELS=zeros(size(idx));
 
 for i=1:length(clusters)
 	LABELS(idx==clusters(loc(i)))=i;	
 end
 
-%TRIALS=trialnum;
+MODEL.R(:,1:nclust)=MODEL.R(:,loc);
+MODEL.mixing(1:nclust)=MODEL.mixing(loc);
+MODEL.sigma=MODEL.sigma(:,:,loc);
+MODEL.mu=MODEL.mu(loc,:);
 
 clusters=unique(LABELS(LABELS>0));
 OUTLIERS=storespikewindows(:,LABELS==0);

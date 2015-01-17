@@ -1,5 +1,4 @@
 function CONTAMINATION=spikoclust_cluster_contamination(SPIKEDATA,MODEL)
-%TODO: may be an error in indexing, need to check thoroughly
 %
 
 nclust=size(MODEL.mu,1);
@@ -8,21 +7,6 @@ CONTAMINATION=ones(1,nclust).*NaN;
 
 % or generate points from each cluster
 %
-
-if any(MODEL.garbage)
-	garbage=1;
-	nclust=nclust+1;
-	if iscell(SPIKEDATA)
-		alldata=cat(1,SPIKEDATA{:});
-	else
-		alldata=SPIKEDATA;
-	end
-	datarange=range(alldata);
-	datamin=min(alldata);
-	datamax=max(alldata);
-	p=prod(datarange);
-	P=(1/p);
-end
 
 total_points=nclust*npoints;
 labels=zeros(total_points,1);
@@ -38,26 +22,14 @@ for i=1:nclust
 	labels(startpoint+1:startpoint+npoints)=i;
 
 	% generate using uniform density spanning entire space
-
-	if i==nclust & garbage
-		for j=1:D
-			points(startpoint+1:startpoint+npoints,j)=(rand(npoints,1).*datamax(j))-datamin(j);
-		end
-	else
-		points(startpoint+1:startpoint+npoints,:)=mvnrnd(MODEL.mu(i,:),MODEL.sigma(:,:,i),npoints);
-	end
+	points(startpoint+1:startpoint+npoints,:)=mvnrnd(MODEL.mu(i,:),MODEL.sigma(:,:,i),npoints);
 end
 
 for i=1:nclust
-
-	if i==nclust & garbage
-		prob(:,i)=P.*ones(size(points,1),1);
-	else
-		prob(:,i)=mvnpdf(points,MODEL.mu(i,:),MODEL.sigma(:,:,i));
-	end
+	prob(:,i)=mvnpdf(points,MODEL.mu(i,:),MODEL.sigma(:,:,i));
 end
 
-prob=prob.*repmat(MODEL.mixing,[total_points 1]);
+prob=prob.*repmat(MODEL.mixing(1:nclust),[total_points 1]);
 [~,classification]=max(prob,[],2);
 
 for i=1:size(MODEL.mu,1)
@@ -71,7 +43,3 @@ for i=1:size(MODEL.mu,1)
 	fn=sum((classification~=i)&(labels==i));
 	CONTAMINATION(i)=(fp/npoints)+(fn/npoints);
 end
-
-end
-
-
