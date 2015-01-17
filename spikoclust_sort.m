@@ -24,7 +24,7 @@ function [cluster spikeless]=spikoclust_sort(EPHYS_DATA,FS,varargin)
 %		car_exclude
 %		carelectrodes to exclude from noise estimate
 %		
-%		noise
+%		noise_removal
 %		noise rejection method ('car' for common average 'nn' for nearest neighbor, or 'none',
 %		default: 'none')
 %
@@ -37,8 +37,8 @@ function [cluster spikeless]=spikoclust_sort(EPHYS_DATA,FS,varargin)
 %		filt_order
 %		filter order (Butterworth, default: 6)
 %
-%		auto_clust
-%		perform automated cluster cutting via fitting a GMM through EM (default: 1)
+%		gui_clust
+%		gui assisted clustering? (default: 0)	
 %
 %		sigma_t
 %		multiple of variance estimate for automatic threshold setting (uses the Quiroga formulation, default: 4)
@@ -113,7 +113,7 @@ if mod(nparams,2)>0
 	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
 end
 
-noise='none'; % none, nn for nearest neighbor, or car for common average
+noise_removal='none'; % none, nn for nearest neighbor, or car for common average
 car_exclude=[]; % exclude any channels for common average?
 
 % 300 Hz E high-pass, see Quiroga et al. 2013
@@ -122,8 +122,7 @@ freq_range=[400]; % bandpassing <10e3 distorted results, reasoning that >800 Hz 
 filt_type='high'; % high,low or bandpass
 filt_order=3; % filter order
 filt_name='e'; % filter type, e for elliptic and b for butterworth
-auto_clust=1; % 0 for manual cluster cutting (GUI), 1 for automated clustering
-noise='none'; % none, nn for nearest neighbor, or car for common average
+gui_clust=0; % use GUI?
 
 tetrode_channels=[];
 sigma_t=4; % multiple of noise estimate for spike threshold (generally 3-4, using Quiroga's method)
@@ -152,8 +151,8 @@ noisewhiten=1; % enable noies whitening?
 
 for i=1:2:nparams
 	switch lower(varargin{i})
-		case 'noise'
-			noise=varargin{i+1};
+		case 'noise_removal'
+			noise_removal=varargin{i+1};
 		case 'sigma_t'
 			sigma_t=varargin{i+1};
 		case 'car_exclude'
@@ -168,8 +167,8 @@ for i=1:2:nparams
 			freq_range=varargin{i+1};
 		case 'spikesort'
 			spikesort=varargin{i+1};
-		case 'auto_clust'
-			auto_clust=varargin{i+1};
+		case 'gui_clust'
+			gui_clust=varargin{i+1};
 		case 'align_method'
 			align_method=varargin{i+1};
 		case 'jitter'
@@ -218,9 +217,9 @@ interpolate_fs=FS*interpolate_f;
 sort_fs=interpolate_fs/sort_f;
 
 [samples,ntrials,ncarelectrodes]=size(EPHYS_DATA);
-if ncarelectrodes==1 & strcmp(noise,'car')
+if ncarelectrodes==1 & strcmp(noise_removal,'car')
 	disp('Turning off CAR, number of electrodes is 1');
-	noise='none';
+	noise_removal='none';
 	car_exclude=[];
 end
 
@@ -232,7 +231,7 @@ TIME=[1:samples]./FS; % time vector for plotting
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SIGNAL CONDITIONING %%%%%%%%%%%%%%%%
 
-proc_data=spikoclust_denoise_signal(EPHYS_DATA,channels,channels,'method',noise,'car_exclude',car_exclude,'car_trim',car_trim);
+proc_data=spikoclust_denoise_signal(EPHYS_DATA,channels,channels,'method',noise_removal,'car_exclude',car_exclude,'car_trim',car_trim);
 proc_data=spikoclust_condition_signal(proc_data,'s','freq_range',...
 	freq_range,'filt_type',filt_type,'filt_order',filt_order,'filt_name',filt_name,...
 	'wavelet_denoise',wavelet_denoise,'decomp_level',decomp_level);
@@ -242,7 +241,7 @@ if length(channels)>1
 end
 
 if ~isempty(tetrode_channels)
-	tetrode_data=spikoclust_denoise_signal(EPHYS_DATA,channels,tetrode_channels,'method',noise,'car_exclude',car_exclude,'car_trim',car_trim);
+	tetrode_data=spikoclust_denoise_signal(EPHYS_DATA,channels,tetrode_channels,'method',noise_removal,'car_exclude',car_exclude,'car_trim',car_trim);
 	tetrode_data=spikoclust_condition_signal(tetrode_data,'s','freq_range',freq_range,'filt_type',filt_type,'filt_order',...
 		filt_order,'filt_name',filt_name,'wavelet_denoise',wavelet_denoise,'decomp_level',decomp_level);
 else
@@ -322,7 +321,7 @@ cluster.parameters.tetrode_channels=tetrode_channels;
 cluster.parameters.spike_window=spike_window;
 cluster.parameters.align_method=align_method;
 
-if auto_clust
+if ~gui_clust
 	[cluster.windows cluster.times cluster.trials cluster.isi cluster.stats... 
 		cluster.outliers cluster.spikedata cluster.model]=...
 		spikoclust_autosort(spikes,spikeless,...

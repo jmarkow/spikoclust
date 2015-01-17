@@ -44,7 +44,33 @@ You should see the following three windows.
 
 ###Script options
 
-Detailed list to be added soon, see the MATLAB help documentation for spikoclust_sort.m 
+Yes there are many options, but many of the defaults should be "sensible" for typical spike sorting applications.  The options, with a description and their default settings, are listed in the following table:
+
+| Parameter | Description | Format | Options | Default |
+|-----------|-------------|--------|---------|---------|
+| `noise_removal` | Method of noise rejection (common average) | string | `car`,`none` | `none` |
+| `car_trim` | If using common average, trim N/2 percent of data on each end before taking mean | float | N/A | `40` |
+| `freq_range` | Frequency range for filtering | 1-2 element vector of floats | N/A | [400] |
+| `filt_type` | Filter class | `high`,`low`,`bandpass` | string | `high` |
+| `filt_order` | Filter order | integer | N/A | `3` |
+| `filt_name` | Filter type | string | 'butter','ellip','kaiser' | `ellip` |
+| `sigma_t` | Detection threshold (multiple of robust standard deviation) | float | N/A | `4` |
+| `detect_method` | Detect negative-going spikes, positive-going spikes, or both | string | `n`,`p`,`b` |
+| `spike_window` | Size of spike window (in s before and after spike) | 2 element vector of floats (s) | N/A | [.0005 .0005] |
+| `interp_f` | Interpolation factor (interpolate spikes by a factor of N) | integer | N/A | `8` | 
+| `align_method` | Feature used for spike re-alignment | string | `min`,`max`,`com` | `min` |
+| `jitter` | Limit on number of samples a spike may be moved for re-alignment | integer | N/A | `10` |
+| `gui_clust` | Use the GUI assistant | logic | N/A | `1` |
+| `clust_check` | Number of spikes to check for | vector of integers | N/A | `[2:8]` |
+| `pcs` | Number of principal components to compute/use | integer | N/A | `2` |
+| `garbage` | Use a garbage component in the mixture to exclude outliers? | logic | N/A | `1` |
+| `smem` | Use split-and-merge EM rather than standard EM? | logic | N/A | `1` |
+| `modelselection` | Technique to use for selecting the number of neurons | string | `icl`,`bic`,`aic` | `icl` |
+| `maxnoisetraces` | Maximum number of traces to use to compute noise covariance | integer | N/A | `1e6` |
+| `noisewhiten` | Enable noise whitening? | logic | N/A | `1` |
+
+*Note that all parameters are passed as parameter/value pairs.
+
 
   
 
