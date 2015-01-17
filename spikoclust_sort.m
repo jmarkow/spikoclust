@@ -50,7 +50,7 @@ function [cluster spikeless]=spikoclust_sort(EPHYS_DATA,FS,varargin)
 %		spike_window
 %		seconds before and after threshold crossing to store (in seconds, default: [.0005 .0005])
 %
-%		clust_start
+%		clust_check
 %		vector of number of components to use in GMM clustering (default: [1:10])
 %
 %		pcs
