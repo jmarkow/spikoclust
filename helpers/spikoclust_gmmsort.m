@@ -175,18 +175,18 @@ else
 
 		mu=[];
 		for j=1:clust_check(i)
-            selection=find(idx==j);
-            
-            % bugfix, if only one sample then mean collapses to single
-            % sample (fixed 8/8/2014)
-     
-            if length(selection)==1
-                startmu(j,:)=newscore(selection,1:rankcut);
-            else
-                startmu(j,:)=mean(newscore(selection,1:rankcut));
-            end
-           
-            %startmu(j,:)=mean(newscore(idx==j,1:rankcut))';
+			selection=find(idx==j);
+
+			% bugfix, if only one sample then mean collapses to single
+			% sample (fixed 8/8/2014)
+
+			if length(selection)==1
+				startmu(j,:)=newscore(selection,1:rankcut);
+			else
+				startmu(j,:)=mean(newscore(selection,1:rankcut));
+			end
+
+			%startmu(j,:)=mean(newscore(idx==j,1:rankcut))';
 			startcov(:,:,j)=diag(var(newscore(:,1:rankcut)));
 		end
 
@@ -236,6 +236,7 @@ else
 end
 
 MODEL=clustermodel;
+MODEL.pcs=v;
 
 % get the labels from the responsibilities (probability of each cluster given each datapoint)
 

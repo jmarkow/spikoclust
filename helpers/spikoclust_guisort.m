@@ -479,7 +479,7 @@ clustermodel=spikoclust_gmem(cluster_data,startobj,nclust,...
 		'garbage',garbage,'merge',smem,'debug',0);
 
 MODEL=clustermodel;
-
+MODEL.pcs=v;
 idx=[];
 for i=1:size(clustermodel.R,1)
 	posteriors=clustermodel.R;
