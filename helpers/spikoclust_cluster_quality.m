@@ -79,7 +79,7 @@ end
 if length(uniq_trial)==1
 	trial_boundary=[0;length(SPIKETIMES)];
 else
-	trial_boundary=[0;trial_boundary];
+	trial_boundary=[0;trial_boundary(:)];
 end
 
 OUTLIERS=SPIKEWINS(:,LABELS==0);

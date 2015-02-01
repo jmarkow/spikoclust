@@ -53,6 +53,11 @@ censor=SPIKES.censor;
 
 expansion=interpolate_fs/fs;
 
+
+if mod(expansion,1)~=0
+	error('Interpolation rate must be an integer');
+end
+
 frame=round(window*fs);
 frame=frame+jitter;
 frame_length=length([-frame(1):frame(2)]);
@@ -76,6 +81,7 @@ traces=size(SPIKES.windows,3);
 
 NEWSPIKES.times=zeros(1,nspikes);
 NEWSPIKES.windows=zeros(spike_window_length,nspikes,traces);
+NEWSPIKES.trial=zeros(1,nspikes);
 
 if isfield(SPIKES,'storewindows')
 	NEWSPIKES.storewindows=zeros(size(NEWSPIKES.windows));
@@ -246,6 +252,7 @@ for i=1:nspikes
 
 	NEWSPIKES.times(counter)=new_time;
 	NEWSPIKES.windows(1:spike_window_length,counter,1:traces)=new_spikewindow;
+	NEWSPIKES.trial(counter)=SPIKES.trial(i);
 
 	if isfield(SPIKES,'storewindows') 
 			
@@ -372,6 +379,7 @@ end
 
 NEWSPIKES.times(counter:nspikes)=[];
 NEWSPIKES.windows(:,counter:nspikes,:)=[];
+NEWSPIKES.trial(counter:nspikes)=[];
 
 if isfield(NEWSPIKES,'storewindows')
 	NEWSPIKES.storewindows(:,counter:nspikes,:)=[];
@@ -381,9 +389,10 @@ end
 counter=2;
 while counter<=length(NEWSPIKES.times)
 	dtime=NEWSPIKES.times(counter)-NEWSPIKES.times(counter-1);
-	if dtime<censor*fs
+	if dtime<censor*fs && NEWSPIKES.trial(counter)==NEWSPIKES.trial(counter-1)
 		NEWSPIKES.times(counter)=[];
 		NEWSPIKES.windows(:,counter,:)=[];
+		NEWSPIKES.trial(counter)=[];
 		if isfield(NEWSPIKES,'storewindows')
 			NEWSPIKES.storetimes(counter)=[];
 			NEWSPIKES.storewindows(:,counter,:)=[];

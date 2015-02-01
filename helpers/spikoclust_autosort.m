@@ -1,4 +1,4 @@
-function [WINDOWS TIMES TRIALS ISI STATS OUTLIERS SPIKEDATA MODEL]=spikoclust_autosort(SPIKES,NOISEDATA,varargin)
+function [WINDOWS TIMES TRIALS ISI STATS OUTLIERS SPIKEDATA MODEL]=spikoclust_autosort(SPIKES,varargin)
 %automated spike clustering using a GMM with split-and-merge EM
 %
 
@@ -77,119 +77,18 @@ for i=1:2:nparams
 	end
 end
 
-downfact=interpolate_fs/fs;
-
-if mod(downfact,1)~=0
-	error('Downsample rate must be an integer');
-end
-
-spikewindows=[];
-spiketimes=[];
-spikeifr=[];
-trialnum=[];
-spike_data=[];
-
 % string the channels together for clustering
 % get the covariance matrices for whitening
 
-[nsamples,ntrials,nchannels]=size(SPIKES(1).windows);
+[nsamples,ntrials,nchannels]=size(SPIKES.windows);
 
-if noisewhiten
-	for i=1:length(NOISEDATA)
-
-		noisetrials=floor(length(NOISEDATA{i})/nsamples);
-
-		if noisetrials>maxnoisetraces
-			noisetrials=maxnoisetraces;
-		end
-
-		disp(['Noise trials ' num2str(noisetrials)]);
-
-		noisematrix=zeros(noisetrials,nsamples);
-
-		counter=0;
-
-		for j=1:noisetrials
-			noisematrix(j,:)=NOISEDATA{i}(counter+1:counter+nsamples);
-			counter=counter+nsamples;
-		end
-
-		noisematrix=noisematrix+regularize.*randn(size(noisematrix));
-		noisecov=cov(noisematrix);
-
-		R=chol(noisecov);
-		invR{i}=inv(R);
-	end
-end
-
-for j=1:length(SPIKES)
-
-	[samples,trials,nchannels]=size(SPIKES(j).windows);
-
-	% store unwhitened times and use the unwhitened spikes for spike times
-
-	SPIKES(j).storewindows=SPIKES(j).windows;
-
-	% comment out the next three lines to not noise-whiten
-
-	if noisewhiten
-		for k=1:nchannels
-			SPIKES(j).windows(:,:,k)=[SPIKES(j).windows(:,:,k)'*invR{k}]';
-		end
-	end
-
-	% upsample and align, then downsample and whiten!!!
-
-	% masking
-
-	%spikemask=ones(size(SPIKES(j).windows));
-	%spikemask([1:15 end-15:end],:,:)=0;
-	%SPIKES(j).windows=SPIKES(j).windows.*spikemask;
-
-	alignspikes=spikoclust_upsample_align(SPIKES(j),'interpolate_fs',interpolate_fs,'align_feature',align_feature);	
-	CLUSTSPIKES(j)=alignspikes;
-
-	% cluster with the decimated spikes
-
-	[~,trials,nchannels]=size(CLUSTSPIKES(j).windows);
-
-	tmp=[];
-	
-	for k=1:nchannels
-		tmp=[tmp;CLUSTSPIKES(j).windows(:,:,k)];
-	end
-
-	clusterspikewindowscell{j}=tmp;
-	
-	tmp=[];
-
-	for k=1:nchannels
-		tmp=[tmp;CLUSTSPIKES(j).storewindows(:,:,k)];
-	end
-
-	storespikewindowscell{j}=tmp;
-	trialscell{j}=ones(trials,1).*j;
-
-end
-
-[nsamples,ntrials,nchannels]=size(CLUSTSPIKES(1).windows);
-
-clusterspikewindows=cat(2,clusterspikewindowscell{:});
-storespikewindows=cat(2,storespikewindowscell{:});
-trialnum=cat(1,trialscell{:});
-spiketimes=cat(2,CLUSTSPIKES(:).storetimes);
-
-clearvars SPIKES CLUSTSPIKES clusterspikewindowscell storespikewindowscell;
-
-[idx spikedata MODEL]=spikoclust_gmmsort(clusterspikewindows,...
+[idx spikedata MODEL]=spikoclust_gmmsort(SPIKES.windows,...
 	'proc_fs',proc_fs,'fs',fs,'interpolate_fs',interpolate_fs,...
 	'smem',smem,'garbage',garbage,'maxnoisetraces',maxnoisetraces,...
 	'clust_check',clust_check,'pcs',pcs,'workers',workers,'modelselection',...
 	modelselection);
 
 features=size(spikedata,2); % what's the dimensionality of the data used for sorting?
-%clusters=unique(idx(idx>0)); % how many clusters?
-%nclust=length(clusters);
 
 nclust=size(MODEL.mu,1);
 clusters=1:nclust;
@@ -205,6 +104,7 @@ end
 [val loc]=sort(nspikes,'descend');
 
 % make the number contiguous and sort by number of spikes, descending
+
 LABELS=idx;
 LABELS=zeros(size(idx));
 
@@ -218,10 +118,10 @@ MODEL.sigma=MODEL.sigma(:,:,loc);
 MODEL.mu=MODEL.mu(loc,:);
 
 clusters=unique(LABELS(LABELS>0));
-OUTLIERS=storespikewindows(:,LABELS==0);
+OUTLIERS=SPIKES.storewindows(:,LABELS==0);
 
 % now assess the cluster quality ,
 % take each cluster and check the FP and FN rate
 
 [WINDOWS TIMES TRIALS SPIKEDATA ISI STATS]=...
-	spikoclust_cluster_quality(storespikewindows,spiketimes,spikedata,LABELS,trialnum,MODEL);
+	spikoclust_cluster_quality(SPIKES.storewindows,SPIKES.times,spikedata,LABELS,SPIKES.trial,MODEL);

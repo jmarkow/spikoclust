@@ -58,7 +58,7 @@ end
 if ndims_ephys==3
 	DATA=zeros(samples,ntrials,length(chmap));
 elseif ndims_ephys==2
-	DATA=zeros(samples,length(chmap));
+	DATA=zeros(samples,ntrials);
 elseif ndims_ephys==1
 	DATA=zeros(samples,1);
 else
@@ -80,16 +80,8 @@ switch lower(method)
 			for i=1:length(chmap)
 				DATA(:,:,i)=EPHYS_DATA(:,:,chmap(i))-CAR;
 			end
-		elseif ndims_ephys==2
-			
-			CAR=trimmean(EPHYS_DATA(:,car_electrodes),car_trim,'round',2);
-
-			for i=1:length(chmap)
-				DATA(:,i)=EPHYS_DATA(:,chmap(i))-CAR;
-			end
-
 		else
-			error('Data must contain at least two dimensions!');
+			error('Data must contain three dimensions!');
 		end
 
 
@@ -102,15 +94,9 @@ switch lower(method)
 				DATA(:,:,i)=EPHYS_DATA(:,:,chmap(i));
 			end
 
-		elseif ndims_ephys==2
-
-			for i=1:length(chmap)
-				DATA(:,i)=EPHYS_DATA(:,chmap(i));
-			end
 		else
 			DATA=EPHYS_DATA;
 		end
-
 
 end
 

@@ -54,6 +54,8 @@ end
 
 % consider setting higher depending on results
 
+%%% TODO: use new fields 
+
 [nsamples,ntrials]=size(SPIKE_DATA);
 
 % resample the noise data to match the spike FS?

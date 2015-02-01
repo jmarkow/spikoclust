@@ -3,6 +3,9 @@ function [WINDOWS TIMES TRIALS ISI STATS OUTLIERS SPIKEDATA MODEL]=spikoclust_gu
 %
 %
 
+
+%TODO: adapt to new structure, remove complicated options
+
 % spikewindows', rows x samples, each row is a windowed spike waveform
 
 % The functions are all nested inside the main function but not each other
