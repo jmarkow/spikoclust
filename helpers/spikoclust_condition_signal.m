@@ -200,27 +200,15 @@ end
 % demean
 
 if demean
-
 	disp('Demeaning data...');
-
-	for i=1:nchannels
-		for j=1:ntrials
-			EPHYS_DATA(:,j,i)=EPHYS_DATA(:,j,i)-mean(EPHYS_DATA(:,j,i));
-		end
-	end
+	EPHYS_DATA=EPHYS_DATA-repmat(mean(EPHYS_DATA),[ nsamples 1 1 ] );
 end
 
 % detrending
 
 if detrenddata
-
 	disp('Detrending (removing linear trend across each trial)');
-
-	for i=1:nchannels
-		for j=1:ntrials
-			EPHYS_DATA(:,j,i)=detrend(EPHYS_DATA(:,j,i));
-		end
-	end
+	EPHYS_DATA=detrend(EPHYS_DATA);
 end
 
 if notch>0

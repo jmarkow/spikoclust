@@ -1,4 +1,4 @@
-function [WINDOWS TIMES TRIALS ISI STATS OUTLIERS SPIKEDATA MODEL]=spikoclust_autosort(SPIKES,varargin)
+function [LABELS MODEL CLUSTER_DATA]=spikoclust_autosort(SPIKES,varargin)
 %automated spike clustering using a GMM with split-and-merge EM
 %
 
@@ -10,20 +10,10 @@ end
 
 nparams=length(varargin);
 
-SPIKEDATA=[];
-CLUSTERPOINTS=[];
+CLUSTER_DATA=[];
 LABELS=[];
-TRIALS=[];
-ISI=[];
-WINDOWS=[];
-OUTLIERS=[];
 MODEL=[];
 
-fs=25e3;
-%interpolated_fs=200e3;
-interpolate_fs=200e3;
-proc_fs=25e3;
-maxnoisetraces=1e6;
 clust_check=10;
 pcs=4;
 workers=1;
@@ -44,18 +34,10 @@ end
 
 for i=1:2:nparams
 	switch lower(varargin{i})
-		case 'fs'
-			fs=varargin{i+1};
-		case 'interpolate_fs'
-			interpolate_fs=varargin{i+1};
-		case 'proc_fs'
-			proc_fs=varargin{i+1};
 		case 'spikecut'
 			spikecut=varargin{i+1};
 		case 'merge'
 			merge=varargin{i+1};
-		case 'maxnoisetraces'
-			maxnoisetaces=varargin{i+1};
 		case 'ranklimit'
 			ranklimit=varargin{i+1};
 		case 'clust_check'
@@ -70,25 +52,16 @@ for i=1:2:nparams
 			workers=varargin{i+1};
 		case 'modelselection'
 			modelselection=varargin{i+1};
-		case 'align_feature'
-			align_feature=varargin{i+1};
-		case 'noisewhiten'
-			noisewhiten=varargin{i+1};
 	end
 end
 
-% string the channels together for clustering
-% get the covariance matrices for whitening
-
 [nsamples,ntrials,nchannels]=size(SPIKES.windows);
 
-[idx spikedata MODEL]=spikoclust_gmmsort(SPIKES.windows,...
-	'proc_fs',proc_fs,'fs',fs,'interpolate_fs',interpolate_fs,...
-	'smem',smem,'garbage',garbage,'maxnoisetraces',maxnoisetraces,...
-	'clust_check',clust_check,'pcs',pcs,'workers',workers,'modelselection',...
-	modelselection);
+[idx CLUSTER_DATA MODEL]=spikoclust_gmmsort(SPIKES.windows,...
+	'smem',smem,'garbage',garbage,'clust_check',clust_check,...
+	'pcs',pcs,'workers',workers,'modelselection',modelselection);
 
-features=size(spikedata,2); % what's the dimensionality of the data used for sorting?
+features=size(CLUSTER_DATA,2); % what's the dimensionality of the data used for sorting?
 
 nclust=size(MODEL.mu,1);
 clusters=1:nclust;
@@ -117,11 +90,4 @@ MODEL.mixing(1:nclust)=MODEL.mixing(loc);
 MODEL.sigma=MODEL.sigma(:,:,loc);
 MODEL.mu=MODEL.mu(loc,:);
 
-clusters=unique(LABELS(LABELS>0));
-OUTLIERS=SPIKES.storewindows(:,LABELS==0);
 
-% now assess the cluster quality ,
-% take each cluster and check the FP and FN rate
-
-[WINDOWS TIMES TRIALS SPIKEDATA ISI STATS]=...
-	spikoclust_cluster_quality(SPIKES.storewindows,SPIKES.times,spikedata,LABELS,SPIKES.trial,MODEL);

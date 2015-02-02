@@ -1,10 +1,11 @@
-function [WINDOWS TIMES TRIALS ISI STATS OUTLIERS SPIKEDATA MODEL]=spikoclust_guisort(SPIKES,NOISEDATA,PARAMETERS,varargin)
+function [LABELS MODEL CLUSTER_DATA]=spikoclust_guisort(SPIKES,varargin)
 %GUI for spike cluster cutting
 %
 %
 
+disp('Close main sorting window to use current clusters...');
 
-%TODO: adapt to new structure, remove complicated options
+%TODO: make use of the interface more explicit (label top, indicate that user needs to close when finished)
 
 % spikewindows', rows x samples, each row is a windowed spike waveform
 
@@ -13,10 +14,10 @@ function [WINDOWS TIMES TRIALS ISI STATS OUTLIERS SPIKEDATA MODEL]=spikoclust_gu
 
 nparams=length(varargin);
 
-% all features excluding IFR and spiketimes
+% all features excluding IFR and SPIKES.times
 
 features_all={'max','min','ne','^2','neo','wid','pgrad','ngrad','PC1','PC2','PC3','PC4'}; 
-features={'PCA','pose','nege','posgrad','neggrad','min','width','ISI'}; 
+features={'PCA','pose','nege','posgrad','neggrad','min','max','width','ISI'}; 
 
 % possible features include, min, max, PCA, width, energy and wavelet coefficients
  
@@ -24,34 +25,25 @@ channel_labels=[];
 colors={'b','r','g','c','m','y','r','g','b'};
 outliercolor='k';
 
-NDIMS=2;
+ndims=3;
 
-LEGEND_LABELS={};
-LABELS=[];
-
-SPIKEDATA=[];
-CLUSTERPOINTS=[];
 LABELS=[];
 TRIALS=[];
 ISI=[];
 WINDOWS=[];
 OUTLIERS=[];
 MODEL=[];
+TIMES=[];
+STATS=[];
 
-fs=25e3;
-%interpolated_fs=200e3;
-interpolate_fs=200e3;
-proc_fs=25e3;
-maxnoisetraces=1e6;
-cluststart=10;
+legend_labels={};
+CLUSTER_DATA=[];
+SPIKEDATA=[];
+
 pcs=4;
 workers=1;
 garbage=1;
 smem=1;
-modelselection='icl';
-align_feature='min';
-regularize=.01;
-noisewhiten=1;
 
 % the template cutoff could be defined by the 95th prctile of the abs(noise) magnitude
 
@@ -61,142 +53,28 @@ end
 
 for i=1:2:nparams
 	switch lower(varargin{i})
-		case 'fs'
-			fs=varargin{i+1};
-		case 'interpolate_fs'
-			interpolate_fs=varargin{i+1};
 		case 'features'
 			features=varargin{i+1};
 		case 'pcs'
 			pcs=varargin{i+1};
 		case 'garbage'
 			garbage=varargin{i+1};
-		case 'proc_fs'
-			proc_fs=varargin{i+1};
-		case 'noisewhiten'
-			noisewhiten=varargin{i+1};
-		case 'align_feature'
-			align_feature=varargin{i+1};
-		case 'spike_window'
-			spike_window=varargin{i+1};
+		case 'smem'
+			smem=varargin{i+1};
 	end
 end
-
-
-% string the channels together for clustering
-% get the covariance matrices for whitening
-
-[nsamples,ntrials,nchannels]=size(SPIKES(1).windows);
-
-if noisewhiten
-	for i=1:length(NOISEDATA)
-
-		noisetrials=floor(length(NOISEDATA{i})/nsamples);
-
-		if noisetrials>maxnoisetraces
-			noisetrials=maxnoisetraces;
-		end
-
-		disp(['Noise trials ' num2str(noisetrials)]);
-
-		noisematrix=zeros(noisetrials,nsamples);
-
-		counter=0;
-
-		for j=1:noisetrials
-			noisematrix(j,:)=NOISEDATA{i}(counter+1:counter+nsamples);
-			counter=counter+nsamples;
-		end
-
-		noisematrix=noisematrix+regularize.*randn(size(noisematrix));
-		noisecov=cov(noisematrix);
-
-		R=chol(noisecov);
-		invR{i}=inv(R);
-	end
-end
-
-for j=1:length(SPIKES)
-
-	[samples,trials,nchannels]=size(SPIKES(j).windows);
-
-	% store unwhitened times and use the unwhitened spikes for spike times
-
-	SPIKES(j).storewindows=SPIKES(j).windows;
-
-	% comment out the next three lines to not noise-whiten
-
-	if noisewhiten
-		for k=1:nchannels
-			SPIKES(j).windows(:,:,k)=[SPIKES(j).windows(:,:,k)'*invR{k}]';
-		end
-	end
-
-	% upsample and align, then downsample and whiten!!!
-
-	% masking
-
-	%spikemask=ones(size(SPIKES(j).windows));
-	%spikemask([1:15 end-15:end],:,:)=0;
-	%SPIKES(j).windows=SPIKES(j).windows.*spikemask;
-
-	alignspikes=spikoclust_upsample_align(SPIKES(j),'interpolate_fs',interpolate_fs,'align_feature',align_feature);	
-	CLUSTSPIKES(j)=alignspikes;
-
-	% cluster with the decimated spikes
-
-	[~,trials,nchannels]=size(CLUSTSPIKES(j).windows);
-
-	tmp=[];
-	
-	for k=1:nchannels
-		tmp=[tmp;CLUSTSPIKES(j).windows(:,:,k)];
-	end
-
-	clusterspikewindowscell{j}=tmp;
-	
-	tmp=[];
-
-	for k=1:nchannels
-		tmp=[tmp;CLUSTSPIKES(j).storewindows(:,:,k)];
-	end
-
-	storespikewindowscell{j}=tmp;
-	trialscell{j}=ones(trials,1).*j;
-
-end
-
-[nsamples,ntrials,nchannels]=size(CLUSTSPIKES(1).windows);
-
-clusterspikewindows=cat(2,clusterspikewindowscell{:});
-storespikewindows=cat(2,storespikewindowscell{:});
-trialnum=cat(1,trialscell{:});
-spiketimes=cat(2,CLUSTSPIKES(:).storetimes);
-
-% expand to include features from all channels processed
-% by convention let's keep each channel a separate column
 
 spike_data=[];
 property_names={};
 
-% downsample spikes back to original FS
-
-downfact=interpolate_fs/proc_fs;
-
-if mod(downfact,1)~=0
-	error('ephyspipeline:templatesortexact:baddownfact',...
-		'Need to downsample by an integer factor');
-end
-
-clusterspikewindows=downsample(clusterspikewindows,downfact);
-
+[nsamples ntrials nchannels]=size(SPIKES.windows);
 
 % cheap to compute standard features
 
 
 if nchannels==1
 
-	geom_features=spikoclust_shape_features(clusterspikewindows);
+	geom_features=spikoclust_shape_features(SPIKES.windows);
 	
 	if any(strcmp('max',lower(features)))
 		spike_data=[spike_data geom_features(:,1)];
@@ -246,9 +124,9 @@ end
 
 outlierpoints=[];
 if any(strcmp('pca',lower(features)))
-	newmodel=spikoclust_gmem(clusterspikewindows',[],1,'garbage',1,'merge',0,'debug',0);
+	newmodel=spikoclust_gmem(SPIKES.windows',[],1,'garbage',1,'merge',0,'debug',0);
 	[v,d]=eigs(newmodel.sigma(:,:,1));
-	newscore=-clusterspikewindows'*v;
+	newscore=-SPIKES.windows'*v;
 	spike_data=[spike_data newscore(:,1:pcs)];
 
 	% these comprise the outliers before the projection... set to >1 to include all (default for now)
@@ -273,43 +151,42 @@ plot_axis=axes('Units','pixels','Position',[50,50,425,425]);
 
 pop_up_x= uicontrol('Style','popupmenu',...
 	'String',property_names,...
-	'Position',[425,90,75,25],'call',@change_plot,...
+	'Position',[400,90,75,25],'call',@change_plot,...
 	'Value',min(1,nfeatures));
 pop_up_x_text= uicontrol('Style','text',...
 	'String','X',...
-	'Position',[430,130,50,45]);
+	'Position',[405,130,50,45]);
 
 pop_up_y= uicontrol('Style','popupmenu',...
 	'String',property_names,...
-	'Position',[520,90,75,25],'call',@change_plot,...
+	'Position',[490,90,75,25],'call',@change_plot,...
 	'Value',min(2,nfeatures));
 pop_up_y_text= uicontrol('Style','text',...
 	'String','Y',...
-	'Position',[525,130,50,45]);
+	'Position',[495,130,50,45]);
 
 pop_up_z= uicontrol('Style','popupmenu',...
 	'String',property_names,...
-	'Position',[620,90,75,25],'call',@change_plot,...
+	'Position',[580,90,75,25],'call',@change_plot,...
 	'Value',min(3,nfeatures));
 pop_up_z_text= uicontrol('Style','text',...
 	'String','Z',...
-	'Position',[625,130,50,45]);
+	'Position',[585,130,50,45]);
 
 pop_up_clusters= uicontrol('Style','popupmenu',...
 	'String',{'1','2','3','4','5','6','7','8','9'},...
-	'Position',[500,210,75,25]);
+	'Position',[470,210,75,25]);
 pop_up_clusters_text= uicontrol('Style','text',...
 	'String','Number of Clusters',...
-	'Position',[525,250,100,45]);
+	'Position',[495,250,100,45]);
 
 push_replot_save= uicontrol('Style','pushbutton',...
 	'String','Show cluster stats',...
-	'Position',[500,40,100,25],'call',@show_stats);
-
+	'Position',[520,40,125,35],'call',@show_stats,'FontSize',11);
 push_recluster= uicontrol('Style','pushbutton',...
 	'String','Recluster',...
-	'Position',[500,550,100,35],'value',0,...
-	'Call',@change_cluster);
+	'Position',[410,40,100,35],'value',0,...
+	'Call',@change_cluster,'FontSize',11);
 
 rows=ceil(length(property_names)/5);
 
@@ -320,15 +197,21 @@ while i<=length(property_names)
 	if column==0, column=7; end
 	cluster_data_check{i}=uicontrol('Style','checkbox',...
 		'String',property_names{i},...
-		'Value',i==1,'Position',[5+column*60,600-row*35,70,25]);
+		'Value',i==1,'Position',[5+column*60,550-row*35,70,25]);
 	set(cluster_data_check{i},'Units','Normalized')
 	i=i+1;
 end
 
+cluster_data_text=uicontrol('Style','text',...
+	'String','Cluster features',...
+	'Position',[250 545 150 25]);
+set(cluster_data_text,'backgroundcolor',get(main_window,'color'));
+set(cluster_data_text,'units','normalized');
+
 % now align everything and send the main_window handle to the output
 % so we can use the gui with uiwait (requires the handle as a return value)
 
-align([pop_up_clusters,pop_up_clusters_text,push_replot_save],'Center','None');
+align([pop_up_clusters,pop_up_clusters_text],'Center','None');
 align([pop_up_x,pop_up_x_text],'Center','None');
 align([pop_up_y,pop_up_y_text],'Center','None');
 align([pop_up_z,pop_up_z_text],'Center','None');
@@ -371,7 +254,7 @@ viewdim(3)=get(pop_up_z,'value');
 view_data=spike_data(:,viewdim);
 clusters=unique(LABELS(LABELS>0));
 
-if NDIMS==2
+if ndims==2
 	for i=1:length(clusters)
 		points=find(LABELS==clusters(i));
 		h(:,i)=plot(view_data(points,1),view_data(points,2),...
@@ -401,13 +284,13 @@ else
 end
 
 grid on
-view(NDIMS)
+view(ndims)
 
 xlabel(property_names{viewdim(1)});
 ylabel(property_names{viewdim(2)});
 zlabel(property_names{viewdim(3)});
 
-L=legend(h,LEGEND_LABELS,'Location','NorthEastOutside');legend boxoff
+L=legend(h,legend_labels,'Location','NorthEastOutside');legend boxoff
 set(L,'FontSize',20,'FontName','Helvetica')
 
 end
@@ -440,7 +323,7 @@ clusterchoice=clusterchoices{clusterselection};
 
 % start with one cluster, go up to 10 and check the within distance for all clusters
 
-cluster_data=spike_data(:,dim);
+CLUSTER_DATA=spike_data(:,dim);
 [datapoints,features]=size(spike_data);
 
 options=statset('Display','off');
@@ -461,14 +344,14 @@ mixing=[];
 nclust=str2num(clusterchoice);
 
 startobj=struct('mu',startmu,'sigma',startcov,'mixing',mixing);
-idx=kmeans(cluster_data,nclust,'replicates',5);
+idx=kmeans(CLUSTER_DATA,nclust,'replicates',5);
 
 %% set up initial model
 
 mu=[];
 for j=1:nclust
-	startmu(j,:)=mean(cluster_data(idx==j,:))';
-	startcov(:,:,j)=diag(var(cluster_data));
+	startmu(j,:)=mean(CLUSTER_DATA(idx==j,:))';
+	startcov(:,:,j)=diag(var(CLUSTER_DATA));
 end
 
 startobj.mu=startmu;
@@ -478,12 +361,13 @@ for j=1:nclust
 	startobj.mixing(j)=sum(idx==j)/length(idx);
 end
 
-clustermodel=spikoclust_gmem(cluster_data,startobj,nclust,...
+clustermodel=spikoclust_gmem(CLUSTER_DATA,startobj,nclust,...
 		'garbage',garbage,'merge',smem,'debug',0);
 
 MODEL=clustermodel;
 MODEL.pcs=v;
 idx=[];
+
 for i=1:size(clustermodel.R,1)
 	posteriors=clustermodel.R;
 	[~,idx(i)]=max(posteriors(i,:));
@@ -494,7 +378,7 @@ if garbage
 	idx(idx==garbageidx)=NaN;
 end
 
-LABELS=zeros(size(cluster_data,1),1);
+LABELS=zeros(size(CLUSTER_DATA,1),1);
 
 % what did we label through clustering
 
@@ -515,7 +399,7 @@ for i=1:nclust
 end
 
 
-OUTLIERS=storespikewindows(:,isnan(idx));
+OUTLIERS=SPIKES.storewindows(:,isnan(idx));
 
 clusters=unique(idx(idx>0)); % how many clusters?
 nclust=length(clusters);
@@ -555,19 +439,18 @@ clustermodel.mu=clustermodel.mu(loc,:);
 % plot in either 2 or 3 dims
 % turns out plot is MUCH faster than scatter, changed accordingly...
 
-LEGEND_LABELS={};
+legend_labels={};
 for i=1:nclust
-	LEGEND_LABELS{i}=['Cluster ' num2str(i)];
+	legend_labels{i}=['Cluster ' num2str(i)];
 end
 
 if garbage & any(isnan(idx))
-	LEGEND_LABELS{end+1}='Outliers';
+	legend_labels{end+1}='Outliers';
 end
 
 % compute any other stats we want, ISI, etc...
-
 [WINDOWS TIMES TRIALS SPIKEDATA ISI STATS]=...
-	spikoclust_cluster_quality(storespikewindows,spiketimes,cluster_data,LABELS,trialnum,clustermodel);
+	spikoclust_cluster_quality(SPIKES.storewindows,SPIKES.times,CLUSTER_DATA,LABELS,SPIKES.trial,MODEL);
 change_plot();
 
 end
@@ -581,7 +464,8 @@ function show_stats(varargin)
 cluster=[];
 cluster=struct('windows',{WINDOWS},'times',{TIMES},'trials',{TRIALS},'spikedata',{SPIKEDATA},'stats',{STATS},...
 	'isi',{ISI},'model',MODEL);
-cluster.parameters=PARAMETERS;
+cluster.parameters.interpolate_fs=SPIKES.fs;
+cluster.parameters.fs=SPIKES.original_fs;
 
 nclust=length(cluster.windows);
 

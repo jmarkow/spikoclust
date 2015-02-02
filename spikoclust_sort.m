@@ -217,6 +217,13 @@ end
 interpolate_fs=FS*interpolate_f;
 sort_fs=interpolate_fs/sort_f;
 
+downfact=interpolate_fs/sort_fs;
+
+if mod(downfact,1)~=0
+	error('ephyspipeline:templatesortexact:baddownfact',...
+		'Need to downsample by an integer factor');
+end
+
 [samples,ntrials,ncarelectrodes]=size(EPHYS_DATA);
 if ncarelectrodes==1 & strcmp(noise_removal,'car')
 	disp('Turning off CAR, number of electrodes is 1');
@@ -225,15 +232,14 @@ if ncarelectrodes==1 & strcmp(noise_removal,'car')
 end
 
 channels=1:ncarelectrodes;
-proc_data=zeros(samples,ntrials,length(channels));
 
 TIME=[1:samples]./FS; % time vector for plotting
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SIGNAL CONDITIONING %%%%%%%%%%%%%%%%
 
-proc_data=spikoclust_denoise_signal(EPHYS_DATA,channels,channels,'method',noise_removal,'car_exclude',car_exclude,'car_trim',car_trim);
-proc_data=spikoclust_condition_signal(proc_data,'s','freq_range',...
+sort_data=spikoclust_denoise_signal(EPHYS_DATA,channels,channels,'method',noise_removal,'car_exclude',car_exclude,'car_trim',car_trim);
+sort_data=spikoclust_condition_signal(sort_data,'s','freq_range',...
 	freq_range,'filt_type',filt_type,'filt_order',filt_order,'filt_name',filt_name,...
 	'wavelet_denoise',wavelet_denoise,'decomp_level',decomp_level);
 
@@ -241,17 +247,9 @@ if length(channels)>1
 	tetrode_channels=channels(2:end);
 end
 
-if ~isempty(tetrode_channels)
-	tetrode_data=spikoclust_denoise_signal(EPHYS_DATA,channels,tetrode_channels,'method',noise_removal,'car_exclude',car_exclude,'car_trim',car_trim);
-	tetrode_data=spikoclust_condition_signal(tetrode_data,'s','freq_range',freq_range,'filt_type',filt_type,'filt_order',...
-		filt_order,'filt_name',filt_name,'wavelet_denoise',wavelet_denoise,'decomp_level',decomp_level);
-else
-	tetrode_data=[];
-end
-
 clear EPHYS_DATA;
 
-[samples,ntrials,newchannels]=size(proc_data);
+[samples,ntrials,newchannels]=size(sort_data);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SPIKE DETECTION %%%%%%%%%%%%%%%%%%%%
@@ -269,7 +267,6 @@ end
 
 % collect spikes
 
-sort_data=cat(3,proc_data(:,:,1),tetrode_data);
 nchannels=size(sort_data,3);
 
 spikethreshold=sigma_t*median(abs(sort_data(:,:,1))/.6745);
@@ -283,7 +280,7 @@ for i=2:nchannels
 	tmp_thresh=sigma_t*median(abs(sort_data(:,:,i))/.6745);
 	tmp_spikes=spikoclust_spike_detect(sort_data(:,:,i),tmp_thresh,'fs',FS,'visualize','n','align_feature',align_feature,...
 		'jitter',jitter,'window',spike_window,'method',detect_method);
-	spikeless{i}=spikoclust_spike_remove(sort_data(:,:,i),spikes)
+	spikeless{i}=spikoclust_spike_remove(sort_data(:,:,i),tmp_spikes);
 end
 
 disp([ num2str(totalspikes) ' total spikes']);
@@ -293,14 +290,6 @@ clear sort_data;
 
 
 disp(['Channel ' num2str(channels)]);
-
-cluster.parameters.fs=FS;
-cluster.parameters.interpolate_fs=interpolate_fs;
-cluster.parameters.sort_fs=sort_fs;
-cluster.parameters.threshold=spikethreshold;
-cluster.parameters.tetrode_channels=tetrode_channels;
-cluster.parameters.spike_window=spike_window;
-cluster.parameters.align_feature=align_feature;
 
 if noisewhiten
 	disp('Noise-whitening spikes...');
@@ -316,27 +305,37 @@ spikes.storewindows=spikes.windows;
 spikes=spikoclust_upsample_align(spikes,'interpolate_fs',interpolate_fs,'align_feature',align_feature);	
 [nsamples,ntrials,nchannels]=size(spikes.windows);
 
-spikes.windows=reshape(permute(spikes.windows,[1 3 2]),[],ntrials);
+spikes.windows=downsample(reshape(permute(spikes.windows,[1 3 2]),[],ntrials),downfact);
 spikes.storewindows=reshape(permute(spikes.storewindows,[1 3 2]),[],ntrials);
 
 if ~gui_clust
-	[cluster.windows cluster.times cluster.trials cluster.isi cluster.stats... 
-		cluster.outliers cluster.spikedata cluster.model]=...
-		spikoclust_autosort(spikes,...
-			'fs',FS,'interpolate_fs',interpolate_fs,'proc_fs',sort_fs,...
-			'clust_check',clust_check,'pcs',pcs,...
-			'workers',spikeworkers,'garbage',garbage,'smem',smem,'modelselection',...
-			modelselection,'align_feature',align_feature);
+	[labels model cluster_data]=spikoclust_autosort(spikes,'clust_check',clust_check,...
+		'pcs',pcs,'workers',spikeworkers,'garbage',garbage,'smem',smem,'modelselection',modelselection);
 else
-	[cluster.windows cluster.times cluster.trials cluster.isi cluster.stats...
-		cluster.outliers cluster.spikedata cluster.model]=...
-		spikoclust_guisort(spikes,spikeless,cluster.parameters,...
-			'fs',FS,'interpolate_fs',interpolate_fs,'proc_fs',sort_fs,...
-			'clust_check',clust_check,'pcs',pcs,...
-			'workers',spikeworkers,'garbage',garbage,'smem',smem,'modelselection',...
-			modelselection,'align_feature',align_feature);
+	[labels model cluster_data]=...
+		spikoclust_guisort(spikes,'pcs',pcs,'workers',spikeworkers,'garbage',garbage,'smem',smem,...
+		'modelselection',modelselection);
 end
 
+
+OUTLIERS=spikes.storewindows(:,labels==0);
+
+% now assess the cluster quality ,
+% take each cluster and check the FP and FN rate
+
+[cluster.windows cluster.times cluster.trials cluster.spikedata cluster.isi cluster.stats]=...
+	spikoclust_cluster_quality(spikes.storewindows,spikes.times,cluster_data,labels,spikes.trial,model);
+
+cluster.model=model;
+cluster.outliers=OUTLIERS;
+cluster.parameters.fs=FS;
+cluster.parameters.interpolate_fs=interpolate_fs;
+cluster.parameters.sort_fs=sort_fs;
+cluster.parameters.threshold=spikethreshold;
+cluster.parameters.tetrode_channels=tetrode_channels;
+cluster.parameters.spike_window=spike_window;
+cluster.parameters.align_feature=align_feature;
+cluster.parameters.n_pcs=pcs;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% IFR, SMOOTH RATE %%%%%%%%%%%%%%%%%%%
@@ -344,24 +343,24 @@ end
 uniq_clusters=1:length(cluster.windows);
 nclust=length(uniq_clusters);
 
-if ~isempty(cluster.windows)
-
-	% cycle through each cluster id
-
-	for j=1:nclust
-
-		IFR{j}=zeros(ntrials,samples);
-
-		for k=1:ntrials
-
-			clusterspikes=cluster.times{j}(cluster.trials{j}==k);
-
-			% IFR will use the current sampling rate
-
-			IFR{j}(k,:)=spikoclust_ifr(round(clusterspikes),samples,FS);
-
-		end
-	end
-end
-
-cluster.IFR=IFR;
+%% compute IFR at reduced rate
+%
+%if ~isempty(cluster.windows)
+%
+%	% cycle through each cluster id
+%
+%	for j=1:nclust
+%
+%		cluster.IFR{j}=zeros(ntrials,samples);
+%
+%		for k=1:ntrials
+%
+%			clusterspikes=cluster.times{j}(cluster.trials{j}==k);
+%
+%			% IFR will use the current sampling rate
+%
+%			cluster.IFR{j}(k,:)=spikoclust_ifr(round(clusterspikes),samples,FS);
+%
+%		end
+%	end
+%end

@@ -4,10 +4,6 @@ function [LABELS SPIKE_DATA MODEL]=spikoclust_gmmsort(SPIKE_DATA,varargin)
 
 nparams=length(varargin);
 
-interpolate_fs=200e3;
-fs=25e3;
-proc_fs=25e3; % downsample the spikes by a factor of 4 and upsample the noise by
-
 maxnoisetraces=1e6; % maximum number of noise traces to use for Cholesky decomposition
 clust_check=1:6; % number of clusters to start with
 pcs=2; % number of PCs to use for clustering
@@ -27,12 +23,6 @@ for i=1:2:nparams
 	switch lower(varargin{i})
 		case 'clust_check'
 			clust_check=varargin{i+1};
-		case 'interpolate_fs'
-			interpolate_fs=varargin{i+1};
-		case 'fs'
-			fs=varargin{i+1};
-		case 'proc_fs'
-			proc_fs=varargin{i+1};
 		case 'pcareplicates'
 			pcareplicates=varargin{i+1};
 		case 'clustreplicates'
@@ -61,7 +51,6 @@ end
 % resample the noise data to match the spike FS?
 % get the covariance matrix of the noise
 
-disp(['Sort fs ' num2str(proc_fs)]);
 disp(['Starting clusters ' num2str(clust_check)]);
 disp(['PCS:  ' num2str(pcs)]);
 disp(['Garbage collection: ' num2str(garbage)]);
@@ -70,15 +59,6 @@ disp(['Workers (deployed only):  ' num2str(workers)]);
 disp(['Model selection ' modelselection]);
 
 % downsample spikes back to original FS
-
-downfact=interpolate_fs/proc_fs;
-
-if mod(downfact,1)~=0
-	error('ephyspipeline:templatesortexact:baddownfact',...
-		'Need to downsample by an integer factor');
-end
-
-SPIKE_DATA=downsample(SPIKE_DATA,downfact);
 
 [nsamples,ntrials]=size(SPIKE_DATA);
 

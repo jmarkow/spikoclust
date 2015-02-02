@@ -36,6 +36,8 @@ function [SPIKES]=ephys_spike_detect(DATA,THRESH,varargin)
 %
 % 
 
+% TODO: speed up, this is the major bottle neck ATM
+
 SPIKES=[];
 
 if nargin<1
@@ -134,7 +136,7 @@ for i=1:ntrials
 
 	for j=1:length(spike_times)
 
-		if spike_times(j)-frame(1)>0 && spike_times(j)+frame(2)<length(DATA(:,1))
+		if spike_times(j)-frame(1)>0 && spike_times(j)+frame(2)<length(DATA(:,i,1))
 
 			% find the absolute minimum (or max) and use as the spike peak for align_featurement
 
