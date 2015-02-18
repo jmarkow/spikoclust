@@ -183,7 +183,7 @@ end
 
 % visualize the voltage trace, threshold(s) and spikes
 
-if lower(visualize(1))=='y'
+if lower(visualize(1))=='y' & ntrials==1
 
 	nsamples=length(DATA);
 	figure();
