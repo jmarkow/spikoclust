@@ -288,6 +288,9 @@ clear sort_data;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+% store unwhitened times and use the unwhitened spikes for spike times
+
+spikes.storewindows=spikes.windows;
 
 disp(['Channel ' num2str(channels)]);
 
@@ -296,9 +299,7 @@ if noisewhiten
 	spikes=spikoclust_noisewhiten(spikes,spikeless,'maxnoisetraces',maxnoisetraces,'regularize',regularize);
 end
 
-% store unwhitened times and use the unwhitened spikes for spike times
 
-spikes.storewindows=spikes.windows;
 
 % upsample and align, then downsample and whiten!!!
 
@@ -316,7 +317,6 @@ else
 		spikoclust_guisort(spikes,'pcs',pcs,'workers',spikeworkers,'garbage',garbage,'smem',smem,...
 		'modelselection',modelselection);
 end
-
 
 OUTLIERS=spikes.storewindows(:,labels==0);
 
