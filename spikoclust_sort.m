@@ -1,7 +1,7 @@
 function [cluster spikeless]=spikoclust_sort(EPHYS_DATA,FS,varargin)
 %CLI-driven Gaussian mixture model-based spike sorting
 %
-%	[cluster spikeless]=ephys_spikesort(EPHYS_DATA,varargin)
+%	[cluster spikeless]=spikoclust_spikesort(EPHYS_DATA,varargin)
 %
 %	EPHYS_DATA
 %	data for spike sorting (samples x trials x channels)

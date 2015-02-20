@@ -1,21 +1,16 @@
-function spikoclust_raster(TIMES,TRIALS,FS,varargin)
-%for cluster quality visualization, plots mean/median waveforms against variance
+function spikoclust_raster(TIMES,TRIALS,varargin)
+%spikoclust_raster generates spike rasters given a vector of spiketimes and trial IDs
 %
-%	ephys_visual_waveplot(WINDOWS,varargin)
+%	spikoclust_raster(TIMES,TRIALS,FS,varargin)
 %
-%	WINDOWS
-%	samples x trials matrix of waveforms (loaded from sua_channels x.mat, stored in clusterwindows)
+%	TIMES
+%	vector spike times
 %
-%	the following may be passed as parameter/value pairs:
-%	
-%		fs
-%		sampling frequency of spikes (normally twice Intan sampling rate, spikes are interpolated by default)
+%	TRIALS
+%	vector of spike trial
 %
-%		snr
-%		snr to display as a title
-%
-%
-%
+%	FS
+%	sampling rate
 %
 
 nparams=length(varargin);
@@ -46,11 +41,6 @@ end
 
 % grab the spikes from a particular cluster and triasl
 
-if iscell(TIMES)
-
-
-end
-
 if ~isempty(fs)
 	TIMES=TIMES/fs;
 end
@@ -73,7 +63,7 @@ end
 newtrialvec=[];
 newspikevec=[];
 
-% smooth ifr with Gaussian window per Hahnloser
+% generate spike matrices
 
 for i=1:length(newspikes)
 	newspikevec=[newspikevec [ newspikes{i};newspikes{i}] ];

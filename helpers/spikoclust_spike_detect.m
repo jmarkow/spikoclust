@@ -1,42 +1,16 @@
 function [SPIKES]=ephys_spike_detect(DATA,THRESH,FS,varargin)
-%ephys_spike_detect.m performs spike detection on a vector with a pre-determined
+%spikoclust_spike_detect.m performs spike detection on a vector with a pre-determined
 %threshold
 %
-% [SPIKES]=spike_detect(DATA,fs,traces,THRESH)
+%	[SPIKES]=spikoclust_spike_detect(DATA,THRESH,FS)
 %
 %
-% DATA
-% sample x trace matrix of voltage recrordings (threshold crossings detected on the first column, the rest are slaved)
+%	DATA
+%	sample x trial matrix of voltage recrordings (threshold crossings detected on the first column, the rest are slaved)
 %
-% fs
-% sampling rate of the recording
+%	THRESH
+%	threshold for detecting spikes (can pass a vector where each element corresponds to threshold for trial)
 %
-% THRESH
-% threshold for detecting spikes
-%
-% the following can be specified as a parameter/value pair
-%
-% censor
-% length between spikes in S, i.e. the censor period (default .001)
-%
-% window
-% two element vector specifying the distance before and after the spike to store
-% (default [.001 .001])
-%
-% method
-% string specifying whether to use (p)ositive threshold crossings, (n), or (b) 
-%
-% visualize
-% generate a figure to visualize spike detection results
-%
-%
-% align_feature
-% ('min' for absolute minimum,
-% 'max' for absolute maximum and 'com' for center of mass about the minimum)
-%
-% 
-
-% TODO: speed up, this is the major bottle neck ATM
 
 SPIKES=[];
 
