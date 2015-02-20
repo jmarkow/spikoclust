@@ -270,7 +270,7 @@ end
 nchannels=size(sort_data,3);
 
 spikethreshold=sigma_t*median(abs(sort_data(:,:,1))/.6745);
-spikes=spikoclust_spike_detect(sort_data,spikethreshold,'fs',FS,'visualize','n','align_feature',align_feature,...
+spikes=spikoclust_spike_detect(sort_data,spikethreshold,FS,'visualize','n','align_feature',align_feature,...
 		'jitter',jitter,'window',spike_window,'method',detect_method);
 spikeless{1}=spikoclust_spike_remove(sort_data(:,:,1),spikes);
 
@@ -278,7 +278,7 @@ totalspikes=length(spikes.times);
 
 for i=2:nchannels
 	tmp_thresh=sigma_t*median(abs(sort_data(:,:,i))/.6745);
-	tmp_spikes=spikoclust_spike_detect(sort_data(:,:,i),tmp_thresh,'fs',FS,'visualize','n','align_feature',align_feature,...
+	tmp_spikes=spikoclust_spike_detect(sort_data(:,:,i),tmp_thresh,FS,'visualize','n','align_feature',align_feature,...
 		'jitter',jitter,'window',spike_window,'method',detect_method);
 	spikeless{i}=spikoclust_spike_remove(sort_data(:,:,i),tmp_spikes);
 end

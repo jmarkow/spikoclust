@@ -1,4 +1,4 @@
-function [SPIKES]=ephys_spike_detect(DATA,THRESH,varargin)
+function [SPIKES]=ephys_spike_detect(DATA,THRESH,FS,varargin)
 %ephys_spike_detect.m performs spike detection on a vector with a pre-determined
 %threshold
 %
@@ -53,7 +53,6 @@ censor=.75e-3; % minimum time between spikes, i.e. censor period
 window=[.0004 .0004]; % how large of a window to grab, seconds before and after spike
 method='b'; % how to grab spikes, [p]os, [n]eg, or [b]oth (abs value)
 visualize='y';
-fs=25e3;
 jitter=4; % how much jitter do we allow before tossing out a spike (in samples of original fs)?
 maxspikes=1e5;
 
@@ -75,8 +74,6 @@ for i=1:2:nparams
 			method=varargin{i+1};
 		case 'visualize'
 			visualize=varargin{i+1};
-		case 'fs'
-			fs=varargin{i+1};
 		case 'jitter'
 			jitter=varargin{i+1};	
 	end
@@ -95,7 +92,7 @@ end
 SPIKES.frame=window;
 SPIKES.jitter=jitter;
 
-frame=round(window*fs);
+frame=round(window*FS);
 frame=frame+jitter;
 frame_length=length([-frame(1):frame(2)]);
 timepoints=-frame(1):frame(2);
@@ -127,7 +124,7 @@ for i=1:ntrials
 	counter=2;
 	while counter<=length(spike_times)
 		dtime=spike_times(counter)-spike_times(counter-1);
-		if dtime<censor*fs
+		if dtime<censor*FS
 			spike_times(counter)=[];
 		else
 			counter=counter+1;
@@ -159,9 +156,9 @@ SPIKES.times(spike_counter:maxspikes)=[];
 SPIKES.windows(:,spike_counter:maxspikes,:)=[];
 SPIKES.trial(spike_counter:maxspikes)=[];
 SPIKES.threshold(spike_counter:maxspikes)=[];
-SPIKES.fs=fs;
+SPIKES.fs=FS;
 SPIKES.censor=censor;
-SPIKES.window_time=timepoints./fs;
+SPIKES.window_time=timepoints./FS;
 
 % make sure we haven't made any alignments that violate the censor period
 
@@ -169,7 +166,7 @@ for i=1:ntrials
 	counter=2;
 	while counter<=length(SPIKES.times)
 		dtime=SPIKES.times(counter)-SPIKES.times(counter-1);
-		if dtime<censor*fs && SPIKES.trial(counter)==SPIKES.trial(counter-1)
+		if dtime<censor*FS && SPIKES.trial(counter)==SPIKES.trial(counter-1)
 			SPIKES.times(counter)=[];
 			SPIKES.windows(:,counter,:)=[];
 			SPIKES.trial(counter)=[];
@@ -187,13 +184,13 @@ if lower(visualize(1))=='y' & ntrials==1
 
 	nsamples=length(DATA);
 	figure();
-	plot([1:nsamples]./fs,DATA(:,1),'b');hold on
+	plot([1:nsamples]./FS,DATA(:,1),'b');hold on
 	ylabel({'Voltage (in V)';['Threshold (in V):  ' num2str(THRESH)]},'FontSize',13,'FontName','Helvetica');
 	xlabel('T (in s)','FontSize',13,'FontName','Helvetica');
-	plot([1:nsamples]./fs,ones(nsamples,1).*THRESH,'r');
-	plot([1:nsamples]./fs,ones(nsamples,1).*-THRESH,'r');
+	plot([1:nsamples]./FS,ones(nsamples,1).*THRESH,'r');
+	plot([1:nsamples]./FS,ones(nsamples,1).*-THRESH,'r');
 
-	plot(SPIKES.times/fs,DATA(SPIKES.times,1),'b*','markersize',10);
+	plot(SPIKES.times/FS,DATA(SPIKES.times,1),'b*','markersize',10);
 	set(gca,'FontSize',11,'FontName','Helvetica')
 	box off
 	axis tight;

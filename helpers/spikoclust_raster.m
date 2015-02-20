@@ -27,6 +27,7 @@ end
 spike_height=.5;
 max_time=[];
 fs=[];
+color='k';
 
 for i=1:2:nparams
 	switch lower(varargin{i})
@@ -36,6 +37,8 @@ for i=1:2:nparams
 			max_time=varargin{i+1};
 		case 'fs'
 			fs=varargin{i+1};
+		case 'color'
+			color=varargin{i+1};
 		otherwise
 
 	end
@@ -81,15 +84,8 @@ if isempty(max_time)
 	max_time=maxt;
 end
 
-%fig=figure();
-
-plot(newspikevec,newtrialvec,'-','color','k');
-
-%xlabel({'Time (in s)'},'FontSize',18,'FontName','Helvetica');
-%ylabel('Trial','interpreter','latex','FontSize',18,'FontName','Helvetica');
-
+plot(newspikevec,newtrialvec,'-','color',color);
+set(gca,'ydir','rev');
 xlim([0 max_time]);
-set(gca,'tickdir','out','FontSize',12,'FontName','Helvetica','ydir','reverse');
-box off
 
 
