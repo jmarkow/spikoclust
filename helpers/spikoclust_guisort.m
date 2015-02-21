@@ -44,6 +44,7 @@ pcs=4;
 workers=1;
 garbage=1;
 smem=1;
+sigma_fix=1e-5;
 
 % the template cutoff could be defined by the 95th prctile of the abs(noise) magnitude
 
@@ -61,6 +62,8 @@ for i=1:2:nparams
 			garbage=varargin{i+1};
 		case 'smem'
 			smem=varargin{i+1};
+		case 'sigma_fix'
+			sigma_fix=varargin{i+1};
 	end
 end
 
@@ -124,7 +127,7 @@ end
 
 outlierpoints=[];
 if any(strcmp('pca',lower(features)))
-	newmodel=spikoclust_gmem(SPIKES.windows',[],1,'garbage',1,'merge',0,'debug',0);
+	newmodel=spikoclust_gmem(SPIKES.windows',[],1,'garbage',1,'merge',0,'debug',0,'sigma_fix',sigma_fix);
 	[v,d]=eigs(newmodel.sigma(:,:,1));
 	newscore=-SPIKES.windows'*v;
 	spike_data=[spike_data newscore(:,1:pcs)];
@@ -362,7 +365,7 @@ for j=1:nclust
 end
 
 clustermodel=spikoclust_gmem(CLUSTER_DATA,startobj,nclust,...
-		'garbage',garbage,'merge',smem,'debug',0);
+		'garbage',garbage,'merge',smem,'debug',0,'sigma_fix',sigma_fix);
 
 MODEL=clustermodel;
 MODEL.pcs=v;

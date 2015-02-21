@@ -147,6 +147,7 @@ spikeworkers=1; % only used in other packages, can safely ignore
 modelselection='icl'; % how to select the number of neurons, 'bic', 'aic', or 'icl' (bic or icl recommended)
 maxnoisetraces=1e6; % not recommended to change, upper bound on number of noise traces used for noise whitening
 noisewhiten=1; % enable noies whitening?
+sigma_fix=1e-5;
 
 % remove eps generation, too slow here...
 
@@ -206,6 +207,8 @@ for i=1:2:nparams
 			decomp_level=varargin{i+1};
 		case 'detect_method'
 			detect_method=varargin{i+1};
+		case 'sigma_fix'
+			sigma_fix=varargin{i+1};
 	end
 end
 
@@ -299,8 +302,6 @@ if noisewhiten
 	spikes=spikoclust_noisewhiten(spikes,spikeless,'maxnoisetraces',maxnoisetraces,'regularize',regularize);
 end
 
-
-
 % upsample and align, then downsample and whiten!!!
 
 spikes=spikoclust_upsample_align(spikes,'interpolate_fs',interpolate_fs,'align_feature',align_feature);	
@@ -311,11 +312,12 @@ spikes.storewindows=reshape(permute(spikes.storewindows,[1 3 2]),[],ntrials);
 
 if ~gui_clust
 	[labels model cluster_data]=spikoclust_autosort(spikes,'clust_check',clust_check,...
-		'pcs',pcs,'workers',spikeworkers,'garbage',garbage,'smem',smem,'modelselection',modelselection);
+		'pcs',pcs,'workers',spikeworkers,'garbage',garbage,'smem',smem,'modelselection',modelselection,...
+		'sigma_fix',sigma_fix);
 else
 	[labels model cluster_data]=...
 		spikoclust_guisort(spikes,'pcs',pcs,'workers',spikeworkers,'garbage',garbage,'smem',smem,...
-		'modelselection',modelselection);
+		'modelselection',modelselection,'sigma_fix',sigma_fix);
 end
 
 OUTLIERS=spikes.storewindows(:,labels==0);

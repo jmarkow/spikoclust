@@ -32,7 +32,6 @@ for i=1:nspikes
 end
 
 coords(to_del,:)=[];
-
 skip=find(coords(:,1)<1);
 coords(skip,:)=[];
 
