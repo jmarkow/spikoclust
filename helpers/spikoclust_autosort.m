@@ -50,8 +50,7 @@ end
 
 [idx CLUSTER_DATA MODEL]=spikoclust_gmmsort(SPIKES.windows,...
 	'smem',smem,'garbage',garbage,'clust_check',clust_check,...
-	'pcs',pcs,'workers',workers,'modelselection',modelselection,...
-	'sigma_fix',sigma_fix);
+	'pcs',pcs,'workers',workers,'modelselection',modelselection);
 
 features=size(CLUSTER_DATA,2); % what's the dimensionality of the data used for sorting?
 
