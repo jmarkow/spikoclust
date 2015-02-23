@@ -123,7 +123,6 @@ filt_type='high'; % high,low or bandpass
 filt_order=3; % filter order
 filt_name='e'; % filter type, e for elliptic and b for butterworth
 gui_clust=0; % use GUI?
-regularize=.01;
 
 tetrode_channels=[];
 sigma_t=4; % multiple of noise estimate for spike threshold (generally 3-4, using Quiroga's method)
@@ -147,7 +146,6 @@ spikeworkers=1; % only used in other packages, can safely ignore
 modelselection='icl'; % how to select the number of neurons, 'bic', 'aic', or 'icl' (bic or icl recommended)
 maxnoisetraces=1e6; % not recommended to change, upper bound on number of noise traces used for noise whitening
 noisewhiten=1; % enable noies whitening?
-sigma_fix=1e-5;
 
 % remove eps generation, too slow here...
 
@@ -299,7 +297,7 @@ disp(['Channel ' num2str(channels)]);
 
 if noisewhiten
 	disp('Noise-whitening spikes...');
-	spikes=spikoclust_noisewhiten(spikes,spikeless,'maxnoisetraces',maxnoisetraces,'regularize',regularize);
+	spikes=spikoclust_noisewhiten(spikes,spikeless,'maxnoisetraces',maxnoisetraces);
 end
 
 % upsample and align, then downsample and whiten!!!
@@ -312,12 +310,11 @@ spikes.storewindows=reshape(permute(spikes.storewindows,[1 3 2]),[],ntrials);
 
 if ~gui_clust
 	[labels model cluster_data]=spikoclust_autosort(spikes,'clust_check',clust_check,...
-		'pcs',pcs,'workers',spikeworkers,'garbage',garbage,'smem',smem,'modelselection',modelselection,...
-		'sigma_fix',sigma_fix);
+		'pcs',pcs,'workers',spikeworkers,'garbage',garbage,'smem',smem,'modelselection',modelselection);
 else
 	[labels model cluster_data]=...
 		spikoclust_guisort(spikes,'pcs',pcs,'workers',spikeworkers,'garbage',garbage,'smem',smem,...
-		'modelselection',modelselection,'sigma_fix',sigma_fix);
+		'modelselection',modelselection);
 end
 
 OUTLIERS=spikes.storewindows(:,labels==0);

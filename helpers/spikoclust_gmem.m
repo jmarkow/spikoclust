@@ -23,9 +23,6 @@ end
 
 maxiter=100;
 regularize=1e-6;
-sigma_fix=1e-5; % adds small constant to diagonal of covariance for mvnpdf
-		% increase if you get complaints about SIGMA not being
-		% symmetric, positive-definite
 epsilon=1e-10;
 lambda=.05; % changed from .01 to .05 9/19/13
 garbage=1;
@@ -55,15 +52,13 @@ for i=1:2:nparams
 			merge=varargin{i+1};
 		case 'debug'
 			debug=varargin{i+1};
-		case 'sigma_fix'
-			sigma_fix=varargin{i+1};
 		otherwise
 	end
 end
 
 
 if nargin<2 | isempty(INIT)
-	INIT=randinit(DATA,NCLUST,regularize);
+	INIT=spikoclust_gmem_randinit(DATA,NCLUST,regularize);
 end
 
 mu=INIT.mu;
@@ -113,7 +108,7 @@ nparams=nparams+NCLUST-1+NCLUST*D;
 
 
 if garbage
-	[unip,mixing]=initgarbage(DATA,NCLUST,INIT);
+	[unip,mixing]=spikoclust_gmem_initgarbage(DATA,NCLUST,INIT);
 	INIT.mixing=mixing;
 else
 	unip=[];
@@ -126,7 +121,7 @@ if debug
 end
 
 
-[newmodel]=fullem(DATA,INIT,unip,maxiter,epsilon,lambda,sigma_fix);
+[newmodel]=spikoclust_gmem_fullem(DATA,INIT,unip,maxiter,epsilon,lambda);
 
 if debug
 	spikoclust_gaussvis(newmodel,DATA,'fig_num',fig);
@@ -142,7 +137,6 @@ end
 % get the merge candidates
 % perform SMEM
 
-
 if merge & NCLUST>2
 	
 	% keep merging until BIC no longer improves
@@ -153,11 +147,11 @@ if merge & NCLUST>2
 
 		% get the merge candidates
 
-		[merges,pairs]=mergemerit(newmodel);
+		[merges,pairs]=spikoclust_gmem_mergemerit(newmodel);
 
 		% get the split candidates
 
-		[~,splits]=splitmerit(DATA,newmodel,unip,sigma_fix);
+		[~,splits]=spikoclust_gmem_splitmerit(DATA,newmodel,unip);
 
 		% go through each pair find a non-matching split
 		% now for each pair we take the split candidates ~==pair
@@ -185,17 +179,17 @@ if merge & NCLUST>2
 			fprintf(1,'Merging %g and %g, splitting %g\n',currtrip(1),currtrip(2),currtrip(3));
 
 
-			mergemodel1=mergeclust(newmodel,...
+			mergemodel1=spikoclust_gmem_mergeclust(newmodel,...
 				currtrip(1),currtrip(2));
-			mergemodel1=splitclust(mergemodel1,...
+			mergemodel1=spikoclust_gmem_splitclust(mergemodel1,...
 				currtrip(3),currtrip(2),splitepsi);
 
 			% run partial em on our new merged cluster
 
-			mergemodel1=partialem(DATA,mergemodel1,...
-				unip,maxiter,epsilon,lambda,[currtrip],sigma_fix);
-			mergemodel1=fullem(DATA,mergemodel1,...
-				unip,maxiter,epsilon,lambda,sigma_fix);
+			mergemodel1=spikoclust_gmem_partialem(DATA,mergemodel1,...
+				unip,maxiter,epsilon,lambda,[currtrip]);
+			mergemodel1=spikoclust_gmem_fullem(DATA,mergemodel1,...
+				unip,maxiter,epsilon,lambda);
 
 			if debug
 				spikoclust_gaussvis(mergemodel1,DATA,'fig_num',fig);
@@ -248,8 +242,10 @@ end
 newmodel.BIC=-2*newmodel.likelihood+log(datapoints)*nparams;
 % get the total entropy
 
+newmodel.sigma=spikoclust_gmem_covcheck(newmodel.sigma);
+
 for i=1:NCLUST
-	pxtheta=mvnpdf(DATA,newmodel.mu(i,:),newmodel.sigma(:,:,i)+eye(D)*sigma_fix);
+	pxtheta=mvnpdf(DATA,newmodel.mu(i,:),newmodel.sigma(:,:,i));
 	tmp=newmodel.R(:,i).*pxtheta;
 	tmp(tmp<0)=[];
 	entropy(i)=sum(tmp.*log(tmp+1e-300));
@@ -270,556 +266,3 @@ newmodel.MML=leftterm+rightterm;
 
 fprintf(1,'NComponents %g, Likelihood %5.4e, BIC %5.4e, MML %5.4e, ICL %5.4e\n',NCLUST,...
 	newmodel.likelihood,newmodel.BIC,newmodel.MML,newmodel.ICL);
-
-end
-
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%% RANDOM INITILIZATION
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-function NEWMODEL=randinit(DATA,NCLUST,regularize)
-
-[datapoints,D]=size(DATA);
-
-% get the variance of all dimensions, set up
-% a diagonal covariance
-
-% randinit
-
-fprintf(1,'Initializing %g cluster(s) with random points\n',NCLUST);
-
-initpoints=randsample(datapoints,NCLUST);
-
-NEWMODEL.mu=DATA(initpoints,:);
-
-% initialize all covariance matrices
-
-datavar=var(DATA);
-initsigma=diag(datavar);
-
-for i=1:NCLUST
-	NEWMODEL.sigma(:,:,i)=initsigma+eye(D).*regularize;
-	NEWMODEL.mixing(i)=1/NCLUST;
-end
-
-end
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%% GARBAGE UNIFORM DENSITY
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-function [P,mixing]=initgarbage(DATA,NCLUST,MODEL)
-
-mixing=MODEL.mixing;
-[datapoints,D]=size(DATA);
-
-% set the uniform density
-
-datarange=range(DATA);
-
-% attempt to compute the volume of the space
-
-p=prod(datarange);
-
-if p==inf
-
-	% issue warning here
-
-	warning('gmem:volumetoolarge',...
-		'Cannot compute volume, setting to : %e',p);
-	p=1e30;
-end
-
-P=(1/p).*ones(datapoints,1);
-
-% set the initial mixing proportion
-
-mixing(end+1)=1/(NCLUST);
-
-% renormalize the mixing proportions
-
-mixing=mixing./sum(mixing);
-
-end
-
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%% FULL EM
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-function [NEWMODEL]=fullem(DATA,MODEL,unip,maxiter,epsilon,lambda,sigma_fix)
-
-%
-%
-%
-%
-%
-
-[datapoints,D]=size(DATA);
-
-mu=MODEL.mu;
-sigma=MODEL.sigma;
-mixing=MODEL.mixing;
-NCLUST=size(mu,1);
-
-garbage=0;
-if ~isempty(unip)
-	garbage=1;
-end
-
-prev_likelihood=1e-9;
-
-for i=1:maxiter
-
-	% compute likelihoods
-	% responsibilities
-
-	if garbage
-		R=zeros(datapoints,NCLUST+1);
-	else
-		R=zeros(datapoints,NCLUST);
-	end
-
-	px=zeros(datapoints,1);
-	den=zeros(datapoints,1);
-
-	% e step, get the responsibilities
-
-	for j=1:NCLUST
-
-		pxtheta=mvnpdf(DATA,mu(j,:),sigma(:,:,j)+eye(D)*sigma_fix); % point x 1 vector
-		mixprob=mixing(j)*pxtheta;
-		px=px+mixprob;
-		den=den+mixprob;
-		R(:,j)=mixprob;
-
-	end
-
-	if garbage
-		mixprob=mixing(NCLUST+1)*unip;
-		R(:,NCLUST+1)=mixprob;
-		den=den+mixprob;
-		px=px+mixprob;
-	end
-
-	% likelihood
-
-	for j=1:NCLUST
-		R(:,j)=R(:,j)./(den+1e-300);
-	end
-
-	if garbage
-		R(:,NCLUST+1)=R(:,NCLUST+1)./(den+1e-300);
-	end
-
-	mixing=mean(R);
-	likelihood=sum(log(px+1e-300));
-
-	deltalikelihood=(likelihood-prev_likelihood);
-
-	% break if we've reached our stopping criterion
-
-	if deltalikelihood>=0 && deltalikelihood<epsilon*abs(prev_likelihood)
-		break;
-	end
-
-	prev_likelihood=likelihood;
-	
-	% update mu, sigma and mixing probabilities
-
-	for j=1:NCLUST
-
-		% need the total r for normalization
-
-		totalR=sum(R(:,j)); 
-
-		% recompute mu, the inner product between all datapoints and their
-		% responsibilities within the cluster, normalized by the totalR
-
-		mu(j,:)=(DATA'*R(:,j))./(totalR+1e-300); 
-
-		% get the deviation from the mean for each datapoint
-
-		dx=(DATA-repmat(mu(j,:),[datapoints 1]))';
-
-		% transpose so we have D x datapoints
-
-		Rdx=repmat(R(:,j)',[D 1]).*dx;
-
-		% now R for the cluster is repeated so we have D x datapoints
-
-		% take the inner product between the mean deviation D x datapoints and datapoints x D 
-		% for responsibilities
-
-		% add the regularization constant and normalize
-
-		sigma(:,:,j)=(Rdx*dx'+lambda*eye(D))/(totalR+lambda);
-	end
-
-	% store the likelihood
-
-
-end
-
-NEWMODEL.R=R;
-NEWMODEL.sigma=sigma;
-NEWMODEL.mu=mu;
-NEWMODEL.mixing=mixing;
-NEWMODEL.likelihood=likelihood;
-
-end
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%% PARTIAL EM
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-function [NEWMODEL]=partialem(DATA,MODEL,unip,maxiter,epsilon,lambda,idx,sigma_fix)
-
-%
-%
-%
-%
-%
-
-garbage=0;
-if ~isempty(unip)
-	garbage=1;
-end
-
-% total responsibilities for normalization
-
-mu=MODEL.mu;
-sigma=MODEL.sigma;
-mixing=MODEL.mixing;
-
-R=estep(DATA,MODEL,unip,sigma_fix);
-
-[datapoints,D]=size(DATA);
-NCLUST=size(mu,1);
-
-if garbage
-	normalizationR=sum(R(:,[idx NCLUST+1]),2);
-else
-	normalizationR=sum(R(:,[idx]),2);
-end
-
-prev_likelihood=1e-9;
-
-for i=1:maxiter
-
-	% compute likelihoods
-	% responsibilities
-
-	if garbage
-		R=zeros(datapoints,NCLUST+1);
-	else
-		R=zeros(datapoints,NCLUST);
-	end
-
-	px=zeros(datapoints,1);
-	den=zeros(datapoints,1);
-
-	% e step, get the responsibilities
-
-	for j=idx
-
-		pxtheta=mvnpdf(DATA,mu(j,:),sigma(:,:,j)+eye(D)*sigma_fix); % point x 1 vector
-		mixprob=mixing(j)*pxtheta;
-		px=px+mixprob;
-		den=den+mixprob;
-		R(:,j)=mixprob;
-
-	end
-
-	if garbage
-		mixprob=mixing(NCLUST+1)*unip;
-		R(:,NCLUST+1)=mixprob;
-		den=den+mixprob;
-		px=px+mixprob;
-	end
-
-	% likelihood
-
-	den=normalizationR./(den+1e-300);
-
-	for j=idx
-		R(:,j)=R(:,j).*den;
-	end
-
-	if garbage
-		R(:,NCLUST+1)=R(:,NCLUST+1).*den;
-	end
-
-	likelihood=sum(log(px+1e-300));
-	deltalikelihood=(likelihood-prev_likelihood);
-
-	% break if we've reached our stopping criterion
-
-	if deltalikelihood>=0 && deltalikelihood<epsilon*abs(prev_likelihood)
-		break;
-	end
-
-	prev_likelihood=likelihood;
-	% update mu, sigma and mixing probabilities
-
-	for j=idx
-
-		% need the total r for normalization
-
-		totalR=sum(R(:,j)); 
-
-		% recompute mu, the inner product between all datapoints and their
-		% responsibilities within the cluster, normalized by the totalR
-
-		mu(j,:)=(DATA'*R(:,j))./totalR; 
-
-		% get the deviation from the mean for each datapoint
-
-		dx=(DATA-repmat(mu(j,:),[datapoints 1]))';
-
-		% transpose so we have D x datapoints
-
-		Rdx=repmat(R(:,j)',[D 1]).*dx;
-
-		% now R for the cluster is repeated so we have D x datapoints
-
-		% take the inner product between the mean deviation D x datapoints and datapoints x D 
-		% for responsibilities
-
-		% add the regularization constant and normalize
-
-		sigma(:,:,j)=(Rdx*dx'+lambda*eye(D))/(totalR+lambda);
-		mixing(j)=mean(R(:,j));
-	end
-
-	if garbage
-		mixing(NCLUST+1)=mean(R(:,NCLUST+1));
-	end
-
-
-
-end
-
-NEWMODEL.R=R;
-NEWMODEL.sigma=sigma;
-NEWMODEL.mu=mu;
-NEWMODEL.mixing=mixing;
-NEWMODEL.likelihood=likelihood;
-
-end
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%% MERGE MERIT
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-function [merit,pairs]=mergemerit(MODEL)
-
-%
-%
-%
-%
-
-clusterids=find(~MODEL.garbage);
-pairs=nchoosek(clusterids,2);
-
-for i=1:size(pairs,1)
-	merit(i)=MODEL.R(:,pairs(i,1))'*MODEL.R(:,pairs(i,2));
-	merit(i)=merit(i)./(norm(MODEL.R(:,pairs(i,1)))*norm(MODEL.R(:,pairs(i,2))));
-end
-
-[val,idx]=sort(merit,'descend');
-merit=merit(idx);
-pairs=pairs(idx,:);
-
-
-end
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%% SPLIT MERIT
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-function [split,splitidx]=splitmerit(DATA,MODEL,unip,sigma_fix)
-%
-%
-%
-
-[datapoints,D]=size(DATA);
-clusterids=find(~MODEL.garbage);
-
-R=estep(DATA,MODEL,unip,sigma_fix);
-
-% take the responsibilities, compare with the model PDFs
-
-mu=MODEL.mu;
-sigma=MODEL.sigma;
-
-for i=clusterids
-
-	pxtheta=mvnpdf(DATA,mu(i,:),sigma(:,:,i)+eye(D)*sigma_fix); % point x 1 vector
-	
-	% "empirical" density
-	
-	f=R(:,i)./sum(R(:,i));
-
-	pxtheta=pxtheta+1e-5;
-	idx=find(f>1e-5);
-
-	% get KL divergence
-
-	split(i)=sum(f(idx).*log(f(idx)./pxtheta(idx)));
-
-end
-
-[split splitidx]=sort(split,'descend');
-
-end
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%% MERGING
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-function [NEWMODEL]=mergeclust(MODEL,c1,c2)
-%
-%
-%
-%
-
-
-% merge into c1
-
-
-mu=MODEL.mu;
-mixing=MODEL.mixing;
-sigma=MODEL.sigma;
-
-mu(c1,:)=(mixing(c1)*mu(c1,:)+mixing(c2)*mu(c2,:))./(mixing(c1)+mixing(c2));
-mixing(c1)=mixing(c1)+mixing(c2);
-sigma(:,:,c1)=(sigma(:,:,c1)+sigma(:,:,c2))./2;
-
-% set the mixing proportion of the merged cluster to 0
-
-mixing(c2)=0;
-
-NEWMODEL.mu=mu;
-NEWMODEL.sigma=sigma;
-NEWMODEL.mixing=mixing;
-
-end
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%% SPLITTING
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-function [MODEL]=splitclust(MODEL,sc,sc1,splitepsi)
-
-
-% take the largest eigenvalue of the covariance
-
-[NCLUST,D]=size(MODEL.mu);
-
-[U DD V]=svd(MODEL.sigma(:,:,sc));
-
-% put the new cluster in the beginning
-
-MODEL.mixing(sc)=MODEL.mixing(sc)/2;
-MODEL.mixing(sc1)=MODEL.mixing(sc);
-
-sd=sqrt(diag(D));
-
-%MODEL.mu(sc,:);
-%MODEL.mu(sc,:)=MODEL.mu(sc,:)+(splitepsi*U*(sd*randn(D,1)))';
-%MODEL.mu(sc1,:)=MODEL.mu(sc,:)+(splitepsi*U*(sd*randn(D,1)))';
-%
-%MODEL.sigma(:,:,sc)=DD(1,1)*eye(D);
-%MODEL.sigma(:,:,sc1)=MODEL.sigma(:,:,sc);
-
-oldmu=MODEL.mu(sc,:);
-
-MODEL.mu(sc,:)=oldmu+(splitepsi*U*(sd*randn(D,1)))';
-MODEL.mu(sc1,:)=oldmu+(splitepsi*U*(sd*randn(D,1)))';
-
-%MODEL.mu(sc,:)=oldmu+(splitepsi*randn(D,1))';
-%MODEL.mu(sc1,:)=oldmu+(splitepsi*randn(D,1))';
-
-MODEL.sigma(:,:,sc)=DD(1,1)*eye(D);
-%MODEL.sigma(:,:,sc)=det(MODEL.sigma(:,:,sc))^(1/D)*eye(D);
-MODEL.sigma(:,:,sc1)=MODEL.sigma(:,:,sc);
-
-end
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%% ESTEP
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-function R=estep(DATA,MODEL,unip,sigma_fix)
-%
-%
-%
-%
-%
-%
-%
-% performs the e step
-
-[datapoints,D]=size(DATA);
-
-garbage=0;
-if ~isempty(unip)
-	garbage=1;
-end
-
-mu=MODEL.mu;
-sigma=MODEL.sigma;
-mixing=MODEL.mixing;
-
-NCLUST=size(mu,1);
-
-px=zeros(datapoints,1);
-den=zeros(datapoints,1);
-
-if ~garbage
-	R=zeros(datapoints,NCLUST);
-else
-	R=zeros(datapoints,NCLUST+1);
-end
-
-for i=1:NCLUST
-
-	pxtheta=mvnpdf(DATA,mu(i,:),sigma(:,:,i)+eye(D)*sigma_fix); % point x 1 vector
-	mixprob=mixing(i)*pxtheta;
-	px=px+mixprob;
-	den=den+mixprob;
-	R(:,i)=mixprob;
-
-end
-
-if garbage
-
-	mixprob=mixing(NCLUST+1)*unip;
-	R(:,NCLUST+1)=mixprob;
-	den=den+mixprob;
-	px=px+mixprob;
-
-end
-
-for i=1:NCLUST
-	R(:,i)=R(:,i)./(den+1e-300);
-end
-
-if garbage
-	R(:,NCLUST+1)=R(:,NCLUST+1)./(den+1e-300);
-end
-
-end
-

@@ -106,7 +106,10 @@ oldstate1=warning('off','stats:gmdistribution:FailedToConverge');
 oldstate2=warning('off','stats:kmeans:FailedToConvergeRep');
 oldstate3=warning('off','stats:kmeans:FailedToConverge');
 
-if smem==2
+% for now free_gmem is deprecated, forcing standard gmem until it is fixed
+
+if 1<0
+	disp('Free GMEM...');
 	tmpclustobj={};
 	startmu=[];
 	startcov=[];
@@ -141,6 +144,7 @@ if smem==2
 	[~,loc]=max(loglikelihood);
 	clustermodel=tmpclustobj{loc(1)};
 else
+	disp('Standard GMEM...');
 	for i=1:1:length(clust_check)
 
 		tmpclustobj={};

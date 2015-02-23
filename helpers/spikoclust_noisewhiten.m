@@ -8,7 +8,6 @@ function SPIKES=spikoclust_noisewhiten(SPIKES,NOISEDATA,varargin)
 nparams=length(varargin);
 
 maxnoisetraces=1e6;
-regularize=.01;
 
 if mod(nparams,2)>0
 	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
@@ -18,8 +17,6 @@ for i=1:2:nparams
 	switch lower(varargin{i})
 		case 'maxnoisetraces'
 			maxnoisetaces=varargin{i+1};
-		case 'regularize'
-			regularize=varargin{i+1};
 	end
 end
 
@@ -42,9 +39,9 @@ for i=1:length(NOISEDATA)
 
 	NOISEDATA{i}=NOISEDATA{i}(1:len-residual);
 	noisematrix=reshape(NOISEDATA{i},nsamples,[])';
-	noisematrix=noisematrix+regularize.*randn(size(noisematrix));
 	noisecov=cov(noisematrix);
-
+    	noisecov=spikoclust_gmem_covcheck(noisecov);
+    
 	r=chol(noisecov);
 	inv_r=inv(r);
 
