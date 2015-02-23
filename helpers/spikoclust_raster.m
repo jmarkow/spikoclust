@@ -41,6 +41,20 @@ end
 
 % grab the spikes from a particular cluster and triasl
 
+if iscell(TIMES)
+	new_times=[];
+	TRIALS=[];
+
+	for i=1:length(TIMES)
+		new_times=[new_times TIMES{i}];
+		TRIALS=[TRIALS ones(1,length(TIMES{i}))*i];
+	end
+
+	TIMES=new_times;
+
+end
+
+
 if ~isempty(fs)
 	TIMES=TIMES/fs;
 end
