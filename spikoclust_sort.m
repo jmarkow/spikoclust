@@ -205,8 +205,6 @@ for i=1:2:nparams
 			decomp_level=varargin{i+1};
 		case 'detect_method'
 			detect_method=varargin{i+1};
-		case 'sigma_fix'
-			sigma_fix=varargin{i+1};
 	end
 end
 

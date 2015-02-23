@@ -20,10 +20,6 @@ workers=1;
 garbage=1;
 smem=1;
 modelselection='icl';
-align_feature='min';
-regularize=.01;
-noisewhiten=1;
-sigma_fix=1e-5;
 
 %outlier_cutoff=.05; % posterior probability cutoff for outliers (.6-.8 work well) [0-1, high=more aggresive]
 
@@ -35,12 +31,6 @@ end
 
 for i=1:2:nparams
 	switch lower(varargin{i})
-		case 'spikecut'
-			spikecut=varargin{i+1};
-		case 'merge'
-			merge=varargin{i+1};
-		case 'ranklimit'
-			ranklimit=varargin{i+1};
 		case 'clust_check'
 			clust_check=varargin{i+1};
 		case 'pcs'
@@ -53,8 +43,6 @@ for i=1:2:nparams
 			workers=varargin{i+1};
 		case 'modelselection'
 			modelselection=varargin{i+1};
-		case 'sigma_fix'
-			sigma_fix=varargin{i+1};
 	end
 end
 
