@@ -47,7 +47,7 @@ while ~spikoclust_gmem_ispdm(SIGMA) & nloops<maxloops
 	end
 end
 
-if nloops>maxloops
+if nloops>=maxloops
 	error('Could not fix covariance matrix.');
 end
 
