@@ -16,7 +16,7 @@ NEWMODEL.mu=DATA(initpoints,:);
 % initialize all covariance matrices
 
 datavar=var(DATA);
-initsigma=diag(datavar);
+initsigma=diag(datavar)
 
 for i=1:NCLUST
 	NEWMODEL.sigma(:,:,i)=initsigma+eye(D).*regularize;
