@@ -23,6 +23,8 @@ spike_height=.5;
 max_time=[];
 fs=[];
 color='k';
+object_style='h';
+spike_width=.5;
 
 for i=1:2:nparams
 	switch lower(varargin{i})
@@ -34,6 +36,8 @@ for i=1:2:nparams
 			fs=varargin{i+1};
 		case 'color'
 			color=varargin{i+1};
+        case 'spike_width'
+            spike_width=varargin{i+1};
 		otherwise
 
 	end
@@ -61,35 +65,48 @@ end
 
 trials=min(TRIALS):max(TRIALS);
 
-maxt=-inf;
-for i=trials
-	
-	% grab the spike times for each trial
+TIMES=TIMES(:)';
+TRIALS=TRIALS(:)';
 
-	newspikes{i}=TIMES(TRIALS==i);
+% create object for each trial, typically more timebins than trials
 
-	maxspike=max(newspikes{i});
-	if maxspike>maxt
-		maxt=maxspike;
+uniq_trials=unique(TRIALS);
+uniq_times=unique(TIMES);
+
+xpoints=[];
+ypoints=[];
+
+if strcmp(lower(object_style),'h')
+	n=length(uniq_trials);
+else
+	n=length(uniq_times);
+end
+
+for i=1:n
+
+	if strcmp(lower(object_style),'h')
+		curr_times=TIMES(TRIALS==uniq_trials(i));
+		curr_trials=uniq_trials(i)*ones(size(curr_times));
+	else
+		curr_trials=TRIALS(TIMES==uniq_times(i));
+		curr_times=uniq_times(i)*ones(size(curr_trials));
 	end
+	
+	trial_xpoints=[curr_times;curr_times;NaN(size(curr_times))];
+	trial_ypoints=[curr_trials-spike_height;curr_trials+spike_height;NaN(size(curr_times))];
+	trial_xpoints=trial_xpoints(:)';
+	trial_ypoints=trial_ypoints(:)';
+
+	xpoints=[xpoints trial_xpoints];
+	ypoints=[ypoints trial_ypoints];
+
 end
 
-newtrialvec=[];
-newspikevec=[];
+%xpoints=[TIMES;TIMES;NaN(size(TIMES))];
+%ypoints=[TRIALS-spike_height;TRIALS+spike_height;NaN(size(TRIALS))];
 
-% generate spike matrices
-
-for i=1:length(newspikes)
-	newspikevec=[newspikevec [ newspikes{i};newspikes{i}] ];
-	newtrialvec=[newtrialvec [ ones(1,length(newspikes{i})).*i+spike_height; ones(1,length(newspikes{i})).*i-spike_height] ];
-end
-
-if isempty(max_time)
-	max_time=maxt;
-end
-
-plot(newspikevec,newtrialvec,'-','color',color);
-set(gca,'ydir','rev');
-xlim([0 max_time]);
+plot(xpoints,ypoints,'-','color',color,'linewidth',spike_width);
+%set(gca,'ydir','rev');
+%xlim([0 max_time]);
 
 
