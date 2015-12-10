@@ -8,7 +8,7 @@ function [cluster spikeless]=spikoclust_sort(EPHYS_DATA,FS,varargin)
 %
 %	FS
 %	sampling rate of data
-%	
+%
 %	the following may be specified as parameter/value pairs:
 %
 %		interpolate_f
@@ -23,7 +23,7 @@ function [cluster spikeless]=spikoclust_sort(EPHYS_DATA,FS,varargin)
 %
 %		car_exclude
 %		carelectrodes to exclude from noise estimate
-%		
+%
 %		noise_removal
 %		noise rejection method ('car' for common average 'nn' for nearest neighbor, or 'none',
 %		default: 'none')
@@ -38,13 +38,13 @@ function [cluster spikeless]=spikoclust_sort(EPHYS_DATA,FS,varargin)
 %		filter order (Butterworth, default: 6)
 %
 %		gui_clust
-%		gui assisted clustering? (default: 0)	
+%		gui assisted clustering? (default: 0)
 %
 %		sigma_t
 %		multiple of variance estimate for automatic threshold setting (uses the Quiroga formulation, default: 4)
 %
 %		modelselection
-%		method of choosing the number of components for GMM clustering (default: icl, options, 
+%		method of choosing the number of components for GMM clustering (default: icl, options,
 %		'BIC' for Bayes Information, 'mml' for minimum message length, 'icl' for BIC-ICL)
 %
 %		spike_window
@@ -61,13 +61,13 @@ function [cluster spikeless]=spikoclust_sort(EPHYS_DATA,FS,varargin)
 %
 %		smem
 %		use split-and-merge algorithm for GMM clustering (0, 1, or 2 for FREE smem, default: 1)
-%	
+%
 %		maxnoisetraces
 %		maximum number of noise traces to use in spike whitening (default: 1e6)
 %
 %		align_feature
 %		method for spike alignment ('min','max', or 'com', default: 'min');
-%		
+%
 %		noise
 %		denoising method ('car' for common average, 'none' for none, default: 'none');
 %
@@ -82,7 +82,7 @@ function [cluster spikeless]=spikoclust_sort(EPHYS_DATA,FS,varargin)
 %
 %		decomp_level
 %		parameter for wavelet denoising (default: 7)
-%	
+%
 %	the following outputs are returned by the script:
 %
 %	cluster
@@ -137,7 +137,7 @@ decomp_level=7; % wavelet decomposition level (not used unless wavelet_denoise i
 wavelet_denoise=0; % wavelet denoise?
 
 spike_window=[.0005 .0005]; % window to the left and right of the detected spike time to use for sorting
-clust_check=1:8; % number of neurons to check for 
+clust_check=1:8; % number of neurons to check for
 pcs=2; % number of principal components to use
 garbage=1; % use a garbage collecting uniform density in the mixture?
 smem=1; % split-and-merge or standard EM?
@@ -145,7 +145,8 @@ smem=1; % split-and-merge or standard EM?
 spikeworkers=1; % only used in other packages, can safely ignore
 modelselection='icl'; % how to select the number of neurons, 'bic', 'aic', or 'icl' (bic or icl recommended)
 maxnoisetraces=1e6; % not recommended to change, upper bound on number of noise traces used for noise whitening
-noisewhiten=1; % enable noies whitening?
+noisewhiten=1; % enable noise whitening?
+gap_check=0; % determine cluster number using gap statistic
 
 % remove eps generation, too slow here...
 
@@ -205,6 +206,8 @@ for i=1:2:nparams
 			decomp_level=varargin{i+1};
 		case 'detect_method'
 			detect_method=varargin{i+1};
+		case 'gap_check'
+			gap_check=varargin{i+1};
 	end
 end
 
@@ -300,7 +303,7 @@ end
 
 % upsample and align, then downsample and whiten!!!
 
-spikes=spikoclust_upsample_align(spikes,'interpolate_fs',interpolate_fs,'align_feature',align_feature);	
+spikes=spikoclust_upsample_align(spikes,'interpolate_fs',interpolate_fs,'align_feature',align_feature);
 [nsamples,ntrials,nchannels]=size(spikes.windows);
 
 spikes.windows=downsample(reshape(permute(spikes.windows,[1 3 2]),[],ntrials),downfact);
@@ -308,7 +311,7 @@ spikes.storewindows=reshape(permute(spikes.storewindows,[1 3 2]),[],ntrials);
 
 if ~gui_clust
 	[labels model cluster_data]=spikoclust_autosort(spikes,'clust_check',clust_check,...
-		'pcs',pcs,'workers',spikeworkers,'garbage',garbage,'smem',smem,'modelselection',modelselection);
+		'pcs',pcs,'workers',spikeworkers,'garbage',garbage,'smem',smem,'modelselection',modelselection,'gap_check',gap_check);
 else
 	[labels model cluster_data]=...
 		spikoclust_guisort(spikes,'pcs',pcs,'workers',spikeworkers,'garbage',garbage,'smem',smem,...
@@ -339,25 +342,3 @@ cluster.parameters.n_pcs=pcs;
 
 uniq_clusters=1:length(cluster.windows);
 nclust=length(uniq_clusters);
-
-%% compute IFR at reduced rate
-%
-%if ~isempty(cluster.windows)
-%
-%	% cycle through each cluster id
-%
-%	for j=1:nclust
-%
-%		cluster.IFR{j}=zeros(ntrials,samples);
-%
-%		for k=1:ntrials
-%
-%			clusterspikes=cluster.times{j}(cluster.trials{j}==k);
-%
-%			% IFR will use the current sampling rate
-%
-%			cluster.IFR{j}(k,:)=spikoclust_ifr(round(clusterspikes),samples,FS);
-%
-%		end
-%	end
-%end

@@ -109,12 +109,12 @@ for i=1:nspikes
 	[samples,channels]=size(tmp_window);
 
 	% spline interpolation
-	
+
 	for j=1:channels
-		interp_window(:,j)=spline(timepoints,tmp_window(:,j),newtimepoints);	
+		interp_window(:,j)=spline(timepoints,tmp_window(:,j),newtimepoints);
 	end
 
-	
+
 	if isfield(SPIKES,'storewindows') & ~isempty(SPIKES.storewindows)
 		for j=1:channels
 			interp_window2(:,j)=spline(timepoints,SPIKES.storewindows(:,i,j),newtimepoints);
@@ -134,7 +134,7 @@ for i=1:nspikes
 			% the negative-going peak has been the most reliable, use it to compute COM
 			% per sahani '99, try to capture the majority of the peak
 
-			% grab the peak after the threshold crossings	
+			% grab the peak after the threshold crossings
 			% first get contiguous region
 
 			[val loc]=min(interp_window(:,1));
@@ -216,7 +216,7 @@ for i=1:nspikes
 
 		case 'auto'
 
-			% insert automated detection of whether to use min or max (take whichever is larger!) 
+			% insert automated detection of whether to use min or max (take whichever is larger!)
 			% rule could be to switch from min to max if max is greater than 10%
 
 			[val loc]=max(interp_window(:,1));
@@ -226,9 +226,9 @@ for i=1:nspikes
 				alignpoint=loc;
 			else
 				alignpoint=loc2;
-			end	
+			end
 
-			
+
 			if abs(alignpoint-frame_center)>jitter
 				continue;
 			end
@@ -245,7 +245,7 @@ for i=1:nspikes
 
 	new_time=peak_time-frame(1)+(round(newframepoints(alignpoint))-1);
 
-	if new_time<0 
+	if new_time<0
 		warning('ephysPipeline:spikedetect:spiketimerror',...
 			'New spike time outside data vector');
 	end
@@ -255,7 +255,7 @@ for i=1:nspikes
 	NEWSPIKES.trial(counter)=SPIKES.trial(i);
 
 	if isfield(SPIKES,'storewindows') 
-			
+
 		switch lower(align_feature)
 
 			case 'com'
@@ -263,7 +263,7 @@ for i=1:nspikes
 				% the negative-going peak has been the most reliable, use it to compute COM
 				% per sahani '99, try to capture the majority of the peak
 
-				% grab the peak after the threshold crossings	
+				% grab the peak after the threshold crossings
 				% first get contiguous region
 
 				[val loc]=min(interp_window2(:,1));
@@ -345,7 +345,7 @@ for i=1:nspikes
 
 			case 'auto'
 
-				% insert automated detection of whether to use min or max (take whichever is larger!) 
+				% insert automated detection of whether to use min or max (take whichever is larger!)
 				% rule could be to switch from min to max if max is greater than 10%
 
 				[val loc]=max(interp_window2(:,1));
@@ -355,7 +355,7 @@ for i=1:nspikes
 					alignpoint=loc;
 				else
 					alignpoint=loc2;
-				end	
+				end
 
 				if abs(alignpoint-frame_center)>jitter
 					continue;
@@ -372,7 +372,7 @@ for i=1:nspikes
 		NEWSPIKES.storetimes(counter)=new_time;
 
 	end
-	
+
 	counter=counter+1;
 
 end
@@ -401,5 +401,3 @@ while counter<=length(NEWSPIKES.times)
 		counter=counter+1;
 	end
 end
-
-

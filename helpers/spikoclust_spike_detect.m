@@ -26,7 +26,7 @@ censor=.75e-3; % minimum time between spikes, i.e. censor period
 	       % per Hill, Mehta and Kleinfeld (2011), 750 microseconds
 window=[.0004 .0004]; % how large of a window to grab, seconds before and after spike
 method='b'; % how to grab spikes, [p]os, [n]eg, or [b]oth (abs value)
-visualize='y';
+visualize='n';
 jitter=4; % how much jitter do we allow before tossing out a spike (in samples of original fs)?
 maxspikes=1e5;
 
@@ -49,7 +49,7 @@ for i=1:2:nparams
 		case 'visualize'
 			visualize=varargin{i+1};
 		case 'jitter'
-			jitter=varargin{i+1};	
+			jitter=varargin{i+1};
 	end
 end
 
@@ -75,15 +75,13 @@ timepoints=-frame(1):frame(2);
 
 SPIKES.times=zeros(1,maxspikes);
 SPIKES.windows=zeros(frame_length,maxspikes,nchannels);
-SPIKES.storewindows=[];
-SPIKES.storetimes=[];
 SPIKES.trial=zeros(1,maxspikes);
 SPIKES.threshold=zeros(1,maxspikes);
 spike_counter=1;
 
 for i=1:ntrials
 
-	if lower(method(1))=='b' || lower(method(1))=='a'	
+	if lower(method(1))=='b' || lower(method(1))=='a'
 		spike_times=find(abs(DATA(:,i,1))>THRESH(i));
 	elseif lower(method(1))=='p'
 		spike_times=find(DATA(:,i,1)>THRESH(i));
@@ -170,4 +168,3 @@ if lower(visualize(1))=='y' & ntrials==1
 	axis tight;
 
 end
-

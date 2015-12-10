@@ -1,4 +1,8 @@
-function NEWMODEL=randinit(DATA,NCLUST,regularize)
+function NEWMODEL=randinit(DATA,NCLUST,regularize,display_mode)
+
+if nargin<4
+	display_mode=1;
+end
 
 [datapoints,D]=size(DATA);
 
@@ -7,7 +11,9 @@ function NEWMODEL=randinit(DATA,NCLUST,regularize)
 
 % randinit
 
-fprintf(1,'Initializing %g cluster(s) with random points\n',NCLUST);
+if display_mode
+	fprintf(1,'Initializing %g cluster(s) with random points\n',NCLUST);
+end
 
 initpoints=randsample(datapoints,NCLUST);
 
@@ -24,4 +30,3 @@ for i=1:NCLUST
 end
 
 end
-

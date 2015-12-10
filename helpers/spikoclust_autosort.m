@@ -20,9 +20,9 @@ workers=1;
 garbage=1;
 smem=1;
 modelselection='icl';
-
-%outlier_cutoff=.05; % posterior probability cutoff for outliers (.6-.8 work well) [0-1, high=more aggresive]
-
+gap_check=0;
+pcareplicates=5; % replicates for robust pca
+outliercut=.9; % exclude outliers from robpca
 nfeatures=10; % number of features to use, ranked by dimreduction technique
 
 if mod(nparams,2)>0
@@ -43,15 +43,41 @@ for i=1:2:nparams
 			workers=varargin{i+1};
 		case 'modelselection'
 			modelselection=varargin{i+1};
+		case 'gap_check'
+			gap_check=varargin{i+1};
+		case 'pcareplicates'
+			pcareplicates=varargin{i+1};
+		case 'outliercut'
+			outliercut=varargin{i+1};
 	end
 end
 
+disp(['Starting clusters ' num2str(clust_check)]);
+disp(['PCS:  ' num2str(pcs)]);
+disp(['Garbage collection: ' num2str(garbage)]);
+disp(['SMEM:  ' num2str(smem)]);
+disp(['Workers (deployed only):  ' num2str(workers)]);
+disp(['Model selection ' modelselection]);
+
 [nsamples,ntrials,nchannels]=size(SPIKES.windows);
 
-[idx CLUSTER_DATA MODEL]=spikoclust_gmmsort(SPIKES.windows,...
-	'smem',smem,'garbage',garbage,'clust_check',clust_check,...
-	'pcs',pcs,'workers',workers,'modelselection',modelselection);
+[SPIKE_DATA,PCS,LAM,PCAMODEL]=spikoclust_robpca(SPIKES.windows');
+rankcut=pcs;
+SPIKE_DATA=SPIKE_DATA(:,1:rankcut);
+outlierpoints=PCAMODEL.R(:,2)>=2;
 
+if gap_check
+	gap_stats=evalclusters(SPIKE_DATA,'kmeans','gap','klist',clust_check);
+	gap_stats
+	clust_check=[gap_stats.OptimalK-1:gap_stats.OptimalK+1];
+	clust_check
+end
+
+[idx CLUSTER_DATA MODEL]=spikoclust_gmmsort(SPIKE_DATA,...
+	'smem',smem,'garbage',garbage,'clust_check',clust_check,...
+	'pcs',pcs,'workers',workers,'modelselection',modelselection,'outlierpoints',outlierpoints);
+
+MODEL.features=PCS;
 features=size(CLUSTER_DATA,2); % what's the dimensionality of the data used for sorting?
 
 nclust=size(MODEL.mu,1);
@@ -73,12 +99,10 @@ LABELS=idx;
 LABELS=zeros(size(idx));
 
 for i=1:length(clusters)
-	LABELS(idx==clusters(loc(i)))=i;	
+	LABELS(idx==clusters(loc(i)))=i;
 end
 
 MODEL.R(:,1:nclust)=MODEL.R(:,loc);
 MODEL.mixing(1:nclust)=MODEL.mixing(loc);
 MODEL.sigma=MODEL.sigma(:,:,loc);
 MODEL.mu=MODEL.mu(loc,:);
-
-

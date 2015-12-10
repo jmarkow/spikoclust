@@ -1,19 +1,17 @@
 function [LABELS SPIKE_DATA MODEL]=spikoclust_gmmsort(SPIKE_DATA,varargin)
 % calculate merge and accept thresholds based on estimate of the noise
-% match the noise sampling rate to the spike sampling rate and 
+% match the noise sampling rate to the spike sampling rate and
 
 nparams=length(varargin);
 
 maxnoisetraces=1e6; % maximum number of noise traces to use for Cholesky decomposition
 clust_check=1:6; % number of clusters to start with
-pcs=2; % number of PCs to use for clustering
-pcareplicates=5; % replicates for robust pca
 clustreplicates=1; % replicates for clustering procedure
 garbage=1; % use uniform garbage collection density
 workers=1; % number of workers when deployed
 modelselection='icl'; % icl, bic, aic
 smem=1; % smem 1 uses split and merge, 0 is standard em, 2 for free split and merge
-outliercut=.9; % exclude outliers from robpca
+outlierpoints=[];
 
 if mod(nparams,2)>0
 	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
@@ -23,8 +21,6 @@ for i=1:2:nparams
 	switch lower(varargin{i})
 		case 'clust_check'
 			clust_check=varargin{i+1};
-		case 'pcareplicates'
-			pcareplicates=varargin{i+1};
 		case 'clustreplicates'
 			clustreplicates=varargin{i+1};
 		case 'pcs'
@@ -37,30 +33,18 @@ for i=1:2:nparams
 			modelselection=varargin{i+1};
 		case 'smem'
 			smem=varargin{i+1};
-		case 'outliercut'
-			outliercut=varargin{i+1};
+		case 'outlierpoints'
+			outlierpoints=varargin{i+1};
 	end
 end
 
-% consider setting higher depending on results
-
-%%% TODO: use new fields 
+%%% TODO: use new fields
 
 [nsamples,ntrials]=size(SPIKE_DATA);
 
-% resample the noise data to match the spike FS?
-% get the covariance matrix of the noise
-
-disp(['Starting clusters ' num2str(clust_check)]);
-disp(['PCS:  ' num2str(pcs)]);
-disp(['Garbage collection: ' num2str(garbage)]);
-disp(['SMEM:  ' num2str(smem)]);
-disp(['Workers (deployed only):  ' num2str(workers)]);
-disp(['Model selection ' modelselection]);
-
-% downsample spikes back to original FS
-
-[nsamples,ntrials]=size(SPIKE_DATA);
+if isempty(outlierpoints)
+	outlierpoints=false(nsamples,1);
+end
 
 % do we need to resample the noise data to match the sorting fs?
 
@@ -68,32 +52,13 @@ if isdeployed
 	matlabpool('open',workers);
 end
 
-likelihood=zeros(1,pcareplicates);
-
-for i=1:pcareplicates
-	tmpnewmodel{i}=spikoclust_gmem(SPIKE_DATA',[],1,'garbage',1,'merge',0,'debug',0);
-	likelihood(i)=tmpnewmodel{i}.likelihood;
-end
-
-% choose the model with the highest likelihood
-
-[~,loc]=max(likelihood);
-newmodel=tmpnewmodel{loc(1)};
-[v,d]=eigs(newmodel.sigma(:,:,1));
-newscore=-SPIKE_DATA'*v;
-rankcut=pcs;
-
 % these comprise the outliers before the projection... set to >1 to include all (default for now)
-
-outlierpoints=newmodel.R(:,2)>=2;
 
 disp(['Robust PCA outliers:  ' num2str(sum(outlierpoints))]);
 
-SPIKE_DATA=newscore(:,1:rankcut);
-
 % only cluster the non-outliers
 
-newscore=newscore(~outlierpoints,:);
+SPIKE_DATA=SPIKE_DATA(~outlierpoints,:);
 
 % might consider removing outliers before we project to the new space (Sahani,1999)
 
@@ -118,14 +83,14 @@ if 1<0
 	startobj=struct('mu',startmu,'sigma',startcov,'mixing',mixing);
 
 	loglikelihood=zeros(1,clustreplicates);
-	idx=kmeans(newscore(:,1:rankcut),clust_check(1),'replicates',5);
+	idx=kmeans(SPIKE_DATA,clust_check(1),'replicates',5);
 
 	%% set up initial model
 
 	mu=[];
 	for i=1:clust_check(1)
-		startmu(i,:)=mean(newscore(idx==i,1:rankcut))';
-		startcov(:,:,i)=diag(var(newscore(:,1:rankcut)));
+		startmu(i,:)=mean(SPIKE_DATA(idx==i,:))';
+		startcov(:,:,i)=diag(var(SPIKE_DATA));
 	end
 
 	startobj.mu=startmu;
@@ -136,7 +101,7 @@ if 1<0
 	end
 
 	for i=1:clustreplicates
-		tmpclustobj{i}=spikoclust_free_gmem(newscore(:,1:rankcut),startobj,clust_check(1),...
+		tmpclustobj{i}=spikoclust_free_gmem(SPIKE_DATA,startobj,clust_check(1),...
 			'garbage',garbage,'merge',smem,'debug',0);
 		loglikelihood(i)=tmpclustobj{i}.likelihood;
 	end
@@ -155,7 +120,7 @@ else
 		startobj=struct('mu',startmu,'sigma',startcov,'mixing',mixing);
 
 		loglikelihood=zeros(1,clustreplicates);
-		idx=kmeans(newscore(:,1:rankcut),clust_check(i),'replicates',5);
+		idx=kmeans(SPIKE_DATA,clust_check(i),'replicates',5);
 
 		%% set up initial model
 
@@ -167,13 +132,13 @@ else
 			% sample (fixed 8/8/2014)
 
 			if length(selection)==1
-				startmu(j,:)=newscore(selection,1:rankcut);
+				startmu(j,:)=SPIKE_DATA(selection,:);
 			else
-				startmu(j,:)=mean(newscore(selection,1:rankcut));
+				startmu(j,:)=mean(SPIKE_DATA(selection,:));
 			end
 
-			%startmu(j,:)=mean(newscore(idx==j,1:rankcut))';
-			startcov(:,:,j)=diag(var(newscore(:,1:rankcut)));
+			%startmu(j,:)=mean(SPIKE_DATA(idx==j,1:rankcut))';
+			startcov(:,:,j)=diag(var(SPIKE_DATA));
 		end
 
 		startobj.mu=startmu;
@@ -184,7 +149,7 @@ else
 		end
 
 		for j=1:clustreplicates
-			tmpclustobj{j}=spikoclust_gmem(newscore(:,1:rankcut),startobj,clust_check(i),...
+			tmpclustobj{j}=spikoclust_gmem(SPIKE_DATA,startobj,clust_check(i),...
 				'garbage',garbage,'merge',smem,'debug',0);
 			loglikelihood(j)=tmpclustobj{j}.likelihood;
 		end
@@ -222,7 +187,6 @@ else
 end
 
 MODEL=clustermodel;
-MODEL.pcs=v;
 
 % get the labels from the responsibilities (probability of each cluster given each datapoint)
 
@@ -261,4 +225,3 @@ LABELS=idx;
 clear idx;
 
 disp(['N Clust:  ' num2str(length(unique(LABELS(LABELS>0))))]);
-

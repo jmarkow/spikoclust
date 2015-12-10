@@ -31,6 +31,7 @@ splitepsi=1; % noise scale for splits
 maxcand=5; % maximum number of smem candidates
 smemiter=100; % maximum smem iterations
 debug=0;
+display_mode=1;
 
 for i=1:2:nparams
 	switch lower(varargin{i})
@@ -52,13 +53,15 @@ for i=1:2:nparams
 			merge=varargin{i+1};
 		case 'debug'
 			debug=varargin{i+1};
+		case 'display_mode'
+			display_mode=varargin{i+1};
 		otherwise
 	end
 end
 
 
 if nargin<2 | isempty(INIT)
-	INIT=spikoclust_gmem_randinit(DATA,NCLUST,regularize);
+	INIT=spikoclust_gmem_randinit(DATA,NCLUST,regularize,display_mode);
 end
 
 mu=INIT.mu;
@@ -138,7 +141,7 @@ end
 % perform SMEM
 
 if merge & NCLUST>2
-	
+
 	% keep merging until BIC no longer improves
 
 	breakflag=0;
@@ -176,7 +179,9 @@ if merge & NCLUST>2
 			end
 
 			currtrip=triplet(i,:);
-			fprintf(1,'Merging %g and %g, splitting %g\n',currtrip(1),currtrip(2),currtrip(3));
+			if display_mode
+				fprintf(1,'Merging %g and %g, splitting %g\n',currtrip(1),currtrip(2),currtrip(3));
+			end
 
 
 			mergemodel1=spikoclust_gmem_mergeclust(newmodel,...
@@ -201,27 +206,33 @@ if merge & NCLUST>2
 
 
 			if mergemodel1.likelihood<newmodel.likelihood
-				
-				fprintf(1,'No improvement in likelihood trying another candidate\n');
+
+				if display_mode
+					fprintf(1,'No improvement in likelihood trying another candidate\n');
+				end
 				continue;
 
 			else
 
-				fprintf(1,'Candidate improved, breaking out of inner SMEM loop\n');
+				if display_mode
+					fprintf(1,'Candidate improved, breaking out of inner SMEM loop\n');
+				end
 				newmodel=mergemodel1;
-				
+
 				% break out of the candidate loop if we've improved
 
 				break;
 			end
 
-		end	
+		end
 
 		% if we've ended and there's no improvement, break out of the main loop
 
 		if mergemodel1.likelihood<newmodel.likelihood
 
-			fprintf(1,'No improvements found in any candidates, breaking out of outer SMEM loop\n');
+			if display_mode
+				fprintf(1,'No improvements found in any candidates, breaking out of outer SMEM loop\n');
+			end
 			break;
 		end
 
@@ -264,5 +275,7 @@ newmodel.MML=leftterm+rightterm;
 
 %newmodel.MML2=.5*sum(log(newmodel.mixing))+((NCLUST*nparams+nparams)/2)*log(datapoints)-newmodel.likelihood;
 
-fprintf(1,'NComponents %g, Likelihood %5.4e, BIC %5.4e, MML %5.4e, ICL %5.4e\n',NCLUST,...
-	newmodel.likelihood,newmodel.BIC,newmodel.MML,newmodel.ICL);
+if display_mode
+	fprintf(1,'NComponents %g, Likelihood %5.4e, BIC %5.4e, MML %5.4e, ICL %5.4e\n',NCLUST,...
+		newmodel.likelihood,newmodel.BIC,newmodel.MML,newmodel.ICL);
+end
