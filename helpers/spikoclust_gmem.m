@@ -8,7 +8,7 @@ function [newmodel]=spikoclust_gmem(DATA,INIT,NCLUST,varargin)
 
 % data should be passed as a matrix observations x variables
 
-if nargin<3
+if nargin<3 | isempty(NCLUST)
 	NCLUST=2;
 end
 

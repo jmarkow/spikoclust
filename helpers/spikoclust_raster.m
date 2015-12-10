@@ -105,6 +105,7 @@ end
 %xpoints=[TIMES;TIMES;NaN(size(TIMES))];
 %ypoints=[TRIALS-spike_height;TRIALS+spike_height;NaN(size(TRIALS))];
 
+spike_width
 plot(xpoints,ypoints,'-','color',color,'linewidth',spike_width);
 %set(gca,'ydir','rev');
 %xlim([0 max_time]);

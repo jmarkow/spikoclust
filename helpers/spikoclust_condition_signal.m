@@ -26,7 +26,7 @@ notch_bw=100;
 % data type specific defaults
 
 switch lower(DATA_TYPE)
-	
+
 	case 's'
 
 		% single unit data
@@ -45,7 +45,7 @@ switch lower(DATA_TYPE)
 	case 'm'
 
 		% multi unit data
-		
+
 		freq_range=[500 5e3]; %5-5k bandpass
 		filt_order=2;
 		filt_type='bandpass';
@@ -145,7 +145,7 @@ end
 % 4) rectify (usually MU only)
 % 5) smooth with a Gaussian kernel (usually MU only)
 
-% usually only median filter the signal if we're computing fields, a timescale of ~1.5 ms 
+% usually only median filter the signal if we're computing fields, a timescale of ~1.5 ms
 % seems to do a good job of removing spikes
 
 if wavelet_denoise
@@ -154,12 +154,12 @@ if wavelet_denoise
 
 	%correction=.8*sqrt(2*log(nsamples));
 	correction=.4*sqrt(2*log(nsamples));
-		
+
 	% minimax threshold is a bit more conservative
 	% multiply by scalar <1 if noise reduction is too severe (altered spike waveforms)
 
 	%correction=1*(.3936+.1829*log2(nsamples));
-	
+
 	% could fold the filtering into this step as well
 
 	for i=1:nchannels
@@ -168,7 +168,7 @@ if wavelet_denoise
 			[c,l]=wavedec(tmp,6,'sym7');
 
 			% estimate winsigma from cd_1
-			
+
 			lidxs=[0;cumsum(l(1:end-1))];
 
 			for k=2:length(l)-1
@@ -184,7 +184,7 @@ if wavelet_denoise
 
 end
 
-if ~isempty(medfilt_scale)	
+if ~isempty(medfilt_scale)
 
 	disp(['Median filtering, timescale:  ' num2str(medfilt_scale) ' s']);
 
@@ -221,7 +221,7 @@ if notch>0
 	       	num2str(notch_bw) ' (q factor ' num2str(notch_q) ')']);
 
 	[b,a]=iirnotch(notch_f,notch_bw/(fs/2));
-	
+
 	EPHYS_DATA=filtfilt(b,a,EPHYS_DATA);
 
 end
@@ -233,7 +233,7 @@ if ~isempty(freq_range)
 
 	switch lower(filt_name(1))
 
-		case 'b'	
+		case 'b'
 
 			disp('Butterworth filter');
 			disp(['Filter order:  ' num2str(filt_order)]);
@@ -247,7 +247,7 @@ if ~isempty(freq_range)
 			EPHYS_DATA=filtfilt(b,a,EPHYS_DATA);
 
 		case 'e'
-			
+
 			disp('Elliptic filter');
 			disp(['Filter order:  ' num2str(filt_order)]);
 			disp(['Frequency range:  ' num2str(freq_range)]);
@@ -259,13 +259,13 @@ if ~isempty(freq_range)
 			EPHYS_DATA=filtfilt(b,a,EPHYS_DATA);
 
 		case 'k'
-		
+
 
 			disp('Kaiser filter');
 			disp(['Frequency cutoffs ' num2str(freq_range)]);
 			disp(['Ripple:  ' num2str(ripple) ' dB']);
 			disp(['Attenuation:  ' num2str(20*log10(attenuation)) ' dB']);
-		
+
 			switch lower(filt_type(1))
 				case 'l'
 					mags=[1 0];
@@ -295,9 +295,9 @@ if ~isempty(freq_range)
 			disp(['Frequency cutoff:  ' num2str(fs/(2^decomp_level))]);
 
 			for i=1:nchannels
-				
+
 				for j=1:ntrials
-					
+
 					[c,l]=wavedec(EPHYS_DATA(:,j,i),decomp_level,'sym7');
 
 					% set the approximation coefficients to zero
@@ -313,9 +313,9 @@ if ~isempty(freq_range)
 
 
 		otherwise
-		
+
 			error('Did not understand filter name (must be kaiser or butter)');
-		
+
 	end
 
 end
@@ -333,9 +333,9 @@ end
 % finally, smoothing
 
 if ~isempty(winsigma)
-	
+
 	disp(['Smoothing data with Gaussian kernel, winsigma=' num2str(winsigma*1e3) ' ms']);
-	
+
 	edges=[-3*winsigma:1/fs:3*winsigma];
 	kernel=(1/(winsigma*sqrt(2*pi)))*exp((-(edges-0).^2)./(2*winsigma^2));
 	kernel=kernel./sum(kernel); % normalize to sum to 1
@@ -347,8 +347,3 @@ if ~isempty(winsigma)
 	end
 
 end
-
-
-
-
-

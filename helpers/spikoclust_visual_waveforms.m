@@ -25,6 +25,7 @@ spacingvert=.1;
 margin=.12;
 marginleft=.25;
 marginright=.08;
+trial_limit=[];
 
 for i=1:2:nparams
 	switch lower(varargin{i})
@@ -42,6 +43,8 @@ for i=1:2:nparams
 			note=varargin{i+1};
 		case 'channelboundary'
 			channelboundary=varargin{i+1};
+        case 'trial_limit'
+            trial_limit=varargin{i+1};
 	end
 end
 
