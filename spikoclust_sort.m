@@ -301,7 +301,7 @@ if noisewhiten
 	spikes=spikoclust_noisewhiten(spikes,spikeless,'maxnoisetraces',maxnoisetraces);
 end
 
-% upsample and align, then downsample and whiten!!!
+% upsample and align, then downsample for sorting!!!
 
 spikes=spikoclust_upsample_align(spikes,'interpolate_fs',interpolate_fs,'align_feature',align_feature);
 [nsamples,ntrials,nchannels]=size(spikes.windows);

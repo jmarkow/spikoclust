@@ -68,14 +68,12 @@ outlierpoints=PCAMODEL.R(:,2)>=2;
 
 if gap_check
 	gap_stats=evalclusters(SPIKE_DATA,'kmeans','gap','klist',clust_check);
-	gap_stats
 	clust_check=[gap_stats.OptimalK-1:gap_stats.OptimalK+1];
-	clust_check
 end
 
 [idx CLUSTER_DATA MODEL]=spikoclust_gmmsort(SPIKE_DATA,...
 	'smem',smem,'garbage',garbage,'clust_check',clust_check,...
-	'pcs',pcs,'workers',workers,'modelselection',modelselection,'outlierpoints',outlierpoints);
+	'workers',workers,'modelselection',modelselection,'outlierpoints',outlierpoints);
 
 MODEL.features=PCS;
 features=size(CLUSTER_DATA,2); % what's the dimensionality of the data used for sorting?

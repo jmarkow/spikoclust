@@ -5,6 +5,10 @@ function [DATA,CAR]=spikoclust_denoise_signal(EPHYS_DATA,CHIN,CHOUT,varargin)
 %
 %
 
+ndims_ephys=ndims(EPHYS_DATA);
+[samples,ntrials,nchannels]=size(EPHYS_DATA);
+
+if nargin<2 | isempty(CHIN), CHIN=1:nchannels; end
 if nargin<3 | isempty(CHOUT), CHOUT=CHIN; end
 
 nparams=length(varargin);
@@ -41,9 +45,6 @@ for i=1:length(car_exclude)
 end
 
 car_electrodes=setdiff(1:length(CHIN),exclude_channels); % which electrodes are good for CAR?
-ndims_ephys=ndims(EPHYS_DATA);
-
-[samples,ntrials,nchannels]=size(EPHYS_DATA);
 
 % map each channel appropriately
 
@@ -99,6 +100,3 @@ switch lower(method)
 		end
 
 end
-
-
-

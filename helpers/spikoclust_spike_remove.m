@@ -5,6 +5,9 @@ function SPIKELESS=spikoclust_spike_remove(DATA,SPIKES)
 %
 %
 
+if isvector(DATA)
+	DATA=DATA(:);
+end
 
 nspikes=length(SPIKES.times);
 edges=round(SPIKES.frame*SPIKES.fs);
@@ -51,4 +54,3 @@ for i=1:ncoords
 	SPIKELESS(counter:counter+nsamples)=DATA(coords(i,1):coords(i,2),coords(i,3));
 	counter=counter+nsamples+1;
 end
-

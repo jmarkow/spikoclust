@@ -23,8 +23,6 @@ for i=1:2:nparams
 			clust_check=varargin{i+1};
 		case 'clustreplicates'
 			clustreplicates=varargin{i+1};
-		case 'pcs'
-			pcs=varargin{i+1};
 		case 'garbage'
 			garbage=varargin{i+1};
 		case 'workers'

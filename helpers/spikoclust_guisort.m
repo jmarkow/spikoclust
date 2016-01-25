@@ -16,11 +16,11 @@ nparams=length(varargin);
 
 % all features excluding IFR and SPIKES.times
 
-features_all={'max','min','ne','^2','neo','wid','pgrad','ngrad','PC1','PC2','PC3','PC4'}; 
-features={'PCA','pose','nege','posgrad','neggrad','min','max','width','ISI'}; 
+features_all={'max','min','ne','^2','neo','wid','pgrad','ngrad','PC1','PC2','PC3','PC4'};
+features={'PCA','pose','nege','posgrad','neggrad','min','max','width','ISI'};
 
 % possible features include, min, max, PCA, width, energy and wavelet coefficients
- 
+
 channel_labels=[];
 colors={'b','r','g','c','m','y','r','g','b'};
 outliercolor='k';
@@ -78,7 +78,7 @@ property_names={};
 if nchannels==1
 
 	geom_features=spikoclust_shape_features(SPIKES.windows);
-	
+
 	if any(strcmp('max',lower(features)))
 		spike_data=[spike_data geom_features(:,1)];
 		property_names{end+1}='max';
@@ -424,9 +424,8 @@ end
 LABELS=zeros(size(idx));
 
 for i=1:nclust
-	LABELS(idx==clusters(loc(i)))=i;	
+	LABELS(idx==clusters(loc(i)))=i;
 end
-
 
 clustermodel.R(:,1:nclust)=clustermodel.R(:,loc);
 clustermodel.mixing(1:nclust)=clustermodel.mixing(loc);
@@ -449,6 +448,11 @@ end
 
 if garbage & any(isnan(idx))
 	legend_labels{end+1}='Outliers';
+end
+
+
+if all(LABELS==0)
+  LABELS=ones(size(LABELS));
 end
 
 % compute any other stats we want, ISI, etc...

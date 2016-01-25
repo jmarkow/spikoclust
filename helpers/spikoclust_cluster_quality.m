@@ -4,6 +4,7 @@ function [WINDOWS TIMES TRIALS CLUSTDATA ISI STATS]=spikoclust_cluster_quality(S
 %
 %
 
+
 nmodels=size(MODEL.mu,1);
 
 clusters=unique(LABELS(LABELS>0)); % how many clusters?

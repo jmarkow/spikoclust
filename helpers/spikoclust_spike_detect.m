@@ -12,10 +12,16 @@ function [SPIKES]=ephys_spike_detect(DATA,THRESH,FS,varargin)
 %	threshold for detecting spikes (can pass a vector where each element corresponds to threshold for trial)
 %
 
+
+
 SPIKES=[];
 
 if nargin<1
 	error('Need the input data to continue!');
+end
+
+if isvector(DATA)
+    DATA=DATA(:);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%

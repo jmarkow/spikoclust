@@ -1,12 +1,17 @@
-function [PROJ,PCS,LAMBDA,MODEL]=cov_check(DATA,REPLICATES)
+function [PROJ,PCS,LAMBDA,MODEL]=spikoclust_robpca(DATA,K,REPLICATES)
 %
 %
 %
 %
 %
 
-if nargin<2
+
+if nargin<3 | isempty(REPLICATES)
 	REPLICATES=10;
+end
+
+if nargin<2 | isempty(K)
+	K=6;
 end
 
 likelihood=zeros(1,REPLICATES);
@@ -19,7 +24,7 @@ end
 
 [~,loc]=max(likelihood);
 MODEL=tmp_newmodel{loc(1)};
-[PCS,LAMBDA]=eigs(MODEL.sigma(:,:,1));
+[PCS,LAMBDA]=eigs(MODEL.sigma(:,:,1),K);
 LAMBDA=diag(LAMBDA);
 [~,idx]=sort(LAMBDA,'descend');
 PCS=PCS(:,idx);
