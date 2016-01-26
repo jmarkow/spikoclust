@@ -150,7 +150,7 @@ Will use filters more appropriate for multi-unit data.
 Spike detection
 ^^^^^^^^^^^^^^^
 
-This is the first obligatory step in the pipeline:  extracting spikes from continuous voltage traces using ``spikoclust_spike_detect``.  To quickly get a reasonable threshold you can use the [Quirogaetal2004] rule.
+This is the first obligatory step in the pipeline:  extracting spikes from continuous voltage traces using ``spikoclust_spike_detect``.  To quickly get a reasonable threshold you can use the [Quirogaetal2004]_ rule.
 
 .. math:: \text{Threshold}=4\sigma_n\quad\sigma_n=median\left[\frac{|x|}{.6745}\right]
 
