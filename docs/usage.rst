@@ -3,8 +3,6 @@ Usage
 
 .. hint:: To pass parameters to any function in the toolbox use parameter/value pairs, see examples below.
 
-.. warning:: Many functions in this toolbox are parallel-enabled (i.e. include parfor loops), check the Parallel Preferences in your MATLAB installation to avoid unwanted behavior.
-
 Quick start
 -----------
 
