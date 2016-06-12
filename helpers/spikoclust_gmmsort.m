@@ -12,6 +12,7 @@ workers=1; % number of workers when deployed
 modelselection='icl'; % icl, bic, aic
 smem=1; % smem 1 uses split and merge, 0 is standard em, 2 for free split and merge
 outlierpoints=[];
+usermodel=[];
 
 if mod(nparams,2)>0
 	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
@@ -33,6 +34,8 @@ for i=1:2:nparams
 			smem=varargin{i+1};
 		case 'outlierpoints'
 			outlierpoints=varargin{i+1};
+		case 'usermodel'
+			usermodel=varargin{i+1};
 	end
 end
 
@@ -71,45 +74,15 @@ oldstate3=warning('off','stats:kmeans:FailedToConverge');
 
 % for now free_gmem is deprecated, forcing standard gmem until it is fixed
 
-if 1<0
-	disp('Free GMEM...');
-	tmpclustobj={};
-	startmu=[];
-	startcov=[];
-	mixing=[];
-
-	startobj=struct('mu',startmu,'sigma',startcov,'mixing',mixing);
-
-	loglikelihood=zeros(1,clustreplicates);
-	idx=kmeans(SPIKE_DATA,clust_check(1),'replicates',5);
-
-	%% set up initial model
-
-	mu=[];
-	for i=1:clust_check(1)
-		startmu(i,:)=mean(SPIKE_DATA(idx==i,:))';
-		startcov(:,:,i)=diag(var(SPIKE_DATA));
-	end
-
-	startobj.mu=startmu;
-	startobj.sigma=startcov;
-
-	for i=1:clust_check(1)
-		startobj.mixing(i)=sum(idx==i)/length(idx);
-	end
-
-	for i=1:clustreplicates
-		tmpclustobj{i}=spikoclust_free_gmem(SPIKE_DATA,startobj,clust_check(1),...
-			'garbage',garbage,'merge',smem,'debug',0);
-		loglikelihood(i)=tmpclustobj{i}.likelihood;
-	end
-
-	[~,loc]=max(loglikelihood);
-	clustermodel=tmpclustobj{loc(1)};
+if ~isempty(usermodel)
+	disp('User model supplied...')
+	startobj=struct('mu',usermodel.mu,'sigma',usermodel.sigma,'mixing',usermodel.mixing(usermodel.garbage==0));
+	clustermodel=spikoclust_gmem(SPIKE_DATA,startobj,sum(usermodel.garbage==0),...
+		'garbage',garbage,'merge',smem,'debug',0);
 else
-	disp('Standard GMEM...');
-	for i=1:1:length(clust_check)
 
+	if 1<0
+		disp('Free GMEM...');
 		tmpclustobj={};
 		startmu=[];
 		startcov=[];
@@ -118,59 +91,99 @@ else
 		startobj=struct('mu',startmu,'sigma',startcov,'mixing',mixing);
 
 		loglikelihood=zeros(1,clustreplicates);
-		idx=kmeans(SPIKE_DATA,clust_check(i),'replicates',5);
+		idx=kmeans(SPIKE_DATA,clust_check(1),'replicates',5);
 
 		%% set up initial model
 
 		mu=[];
-		for j=1:clust_check(i)
-			selection=find(idx==j);
-
-			% bugfix, if only one sample then mean collapses to single
-			% sample (fixed 8/8/2014)
-
-			if length(selection)==1
-				startmu(j,:)=SPIKE_DATA(selection,:);
-			else
-				startmu(j,:)=mean(SPIKE_DATA(selection,:));
-			end
-
-			%startmu(j,:)=mean(SPIKE_DATA(idx==j,1:rankcut))';
-			startcov(:,:,j)=diag(var(SPIKE_DATA));
+		for i=1:clust_check(1)
+			startmu(i,:)=mean(SPIKE_DATA(idx==i,:))';
+			startcov(:,:,i)=diag(var(SPIKE_DATA));
 		end
 
 		startobj.mu=startmu;
 		startobj.sigma=startcov;
 
-		for j=1:clust_check(i)
-			startobj.mixing(j)=sum(idx==j)/length(idx);
+		for i=1:clust_check(1)
+			startobj.mixing(i)=sum(idx==i)/length(idx);
 		end
 
-		for j=1:clustreplicates
-			tmpclustobj{j}=spikoclust_gmem(SPIKE_DATA,startobj,clust_check(i),...
-				'garbage',garbage,'merge',smem,'debug',0);
-			loglikelihood(j)=tmpclustobj{j}.likelihood;
+		for i=1:clustreplicates
+			tmpclustobj{i}=spikoclust_free_gmem(SPIKE_DATA,startobj,clust_check(1),...
+			'garbage',garbage,'merge',smem,'debug',0);
+			loglikelihood(i)=tmpclustobj{i}.likelihood;
 		end
-
-		% only keep the clustobj with the best likelihood
 
 		[~,loc]=max(loglikelihood);
-		clustobj{i}=tmpclustobj{loc(1)};
-		BIC(i)=clustobj{i}.BIC;
-		MML(i)=clustobj{i}.MML;
-		ICL(i)=clustobj{i}.ICL;
+		clustermodel=tmpclustobj{loc(1)};
+	else
+		disp('Standard GMEM...');
 
-	end
+		% if user provides an old model, use em to update it...
 
-	if isdeployed
-		matlabpool('close');
-	end
+		for i=1:1:length(clust_check)
 
-	warning(oldstate1);
-	warning(oldstate2);
-	warning(oldstate3);
+			tmpclustobj={};
+			startmu=[];
+			startcov=[];
+			mixing=[];
 
-	switch lower(modelselection(1))
+			startobj=struct('mu',startmu,'sigma',startcov,'mixing',mixing);
+
+			loglikelihood=zeros(1,clustreplicates);
+			idx=kmeans(SPIKE_DATA,clust_check(i),'replicates',5);
+
+			%% set up initial model
+
+			mu=[];
+			for j=1:clust_check(i)
+				selection=find(idx==j);
+
+				% bugfix, if only one sample then mean collapses to single
+				% sample (fixed 8/8/2014)
+
+				if length(selection)==1
+					startmu(j,:)=SPIKE_DATA(selection,:);
+				else
+					startmu(j,:)=mean(SPIKE_DATA(selection,:));
+				end
+
+				%startmu(j,:)=mean(SPIKE_DATA(idx==j,1:rankcut))';
+				startcov(:,:,j)=diag(var(SPIKE_DATA));
+			end
+
+			startobj.mu=startmu;
+			startobj.sigma=startcov;
+
+			for j=1:clust_check(i)
+				startobj.mixing(j)=sum(idx==j)/length(idx);
+			end
+
+			for j=1:clustreplicates
+				tmpclustobj{j}=spikoclust_gmem(SPIKE_DATA,startobj,clust_check(i),...
+				'garbage',garbage,'merge',smem,'debug',0);
+				loglikelihood(j)=tmpclustobj{j}.likelihood;
+			end
+
+			% only keep the clustobj with the best likelihood
+
+			[~,loc]=max(loglikelihood);
+			clustobj{i}=tmpclustobj{loc(1)};
+			BIC(i)=clustobj{i}.BIC;
+			MML(i)=clustobj{i}.MML;
+			ICL(i)=clustobj{i}.ICL;
+
+		end
+
+		if isdeployed
+			matlabpool('close');
+		end
+
+		warning(oldstate1);
+		warning(oldstate2);
+		warning(oldstate3);
+
+		switch lower(modelselection(1))
 		case 'b'
 			[~,loc]=min(BIC);
 		case 'm'
@@ -178,12 +191,12 @@ else
 		case 'i'
 			[~,loc]=min(ICL);
 		otherwise
+		end
+
+		clustermodel=clustobj{loc(1)};
+
 	end
-
-	clustermodel=clustobj{loc(1)};
-
 end
-
 MODEL=clustermodel;
 
 % get the labels from the responsibilities (probability of each cluster given each datapoint)

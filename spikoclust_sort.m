@@ -147,6 +147,7 @@ modelselection='icl'; % how to select the number of neurons, 'bic', 'aic', or 'i
 maxnoisetraces=1e6; % not recommended to change, upper bound on number of noise traces used for noise whitening
 noisewhiten=1; % enable noise whitening?
 gap_check=0; % determine cluster number using gap statistic
+usermodel=[];
 
 % remove eps generation, too slow here...
 
@@ -208,6 +209,8 @@ for i=1:2:nparams
 			detect_method=varargin{i+1};
 		case 'gap_check'
 			gap_check=varargin{i+1};
+		case 'usermodel'
+			usermodel=varargin{i+1};
 	end
 end
 
@@ -311,7 +314,8 @@ spikes.storewindows=reshape(permute(spikes.storewindows,[1 3 2]),[],ntrials);
 
 if ~gui_clust
 	[labels model cluster_data]=spikoclust_autosort(spikes,'clust_check',clust_check,...
-		'pcs',pcs,'workers',spikeworkers,'garbage',garbage,'smem',smem,'modelselection',modelselection,'gap_check',gap_check);
+		'pcs',pcs,'workers',spikeworkers,'garbage',garbage,'smem',smem,'modelselection',modelselection,...
+		'gap_check',gap_check,'usermodel',usermodel);
 else
 	[labels model cluster_data]=...
 		spikoclust_guisort(spikes,'pcs',pcs,'workers',spikeworkers,'garbage',garbage,'smem',smem,...

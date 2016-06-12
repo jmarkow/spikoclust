@@ -24,10 +24,10 @@ end
 
 [~,loc]=max(likelihood);
 MODEL=tmp_newmodel{loc(1)};
-[PCS,LAMBDA]=eigs(MODEL.sigma(:,:,1),K);
+[PCS,LAMBDA]=svds(MODEL.sigma(:,:,1),K,'largest');
 LAMBDA=diag(LAMBDA);
 [~,idx]=sort(LAMBDA,'descend');
 PCS=PCS(:,idx);
 LAMBDA=LAMBDA(idx);
 
-PROJ=-DATA*PCS;
+PROJ=DATA*PCS;

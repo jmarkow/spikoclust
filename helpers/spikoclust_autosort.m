@@ -24,6 +24,7 @@ gap_check=0;
 pcareplicates=5; % replicates for robust pca
 outliercut=.9; % exclude outliers from robpca
 nfeatures=10; % number of features to use, ranked by dimreduction technique
+usermodel=[];
 
 if mod(nparams,2)>0
 	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
@@ -49,6 +50,8 @@ for i=1:2:nparams
 			pcareplicates=varargin{i+1};
 		case 'outliercut'
 			outliercut=varargin{i+1};
+		case 'usermodel'
+			usermodel=varargin{i+1};
 	end
 end
 
@@ -58,13 +61,21 @@ disp(['Garbage collection: ' num2str(garbage)]);
 disp(['SMEM:  ' num2str(smem)]);
 disp(['Workers (deployed only):  ' num2str(workers)]);
 disp(['Model selection ' modelselection]);
+disp(['User supplied model ' num2str(isempty(usermodel))]);
 
 [nsamples,ntrials,nchannels]=size(SPIKES.windows);
 
-[SPIKE_DATA,PCS,LAM,PCAMODEL]=spikoclust_robpca(SPIKES.windows');
-rankcut=pcs;
-SPIKE_DATA=SPIKE_DATA(:,1:rankcut);
-outlierpoints=PCAMODEL.R(:,2)>=2;
+outlierpoints=[];
+
+if isempty(usermodel)
+	[SPIKE_DATA,PCS,LAM,PCAMODEL]=spikoclust_robpca(SPIKES.windows',pcs);
+	outlierpoints=PCAMODEL.R(:,2)>=2;
+else
+	SPIKE_DATA=SPIKES.windows'*usermodel.features;
+  PCS=usermodel.features;
+end
+
+SPIKE_DATA=SPIKE_DATA(:,1:pcs);
 
 if gap_check
 	gap_stats=evalclusters(SPIKE_DATA,'kmeans','gap','klist',clust_check);
@@ -73,7 +84,8 @@ end
 
 [idx CLUSTER_DATA MODEL]=spikoclust_gmmsort(SPIKE_DATA,...
 	'smem',smem,'garbage',garbage,'clust_check',clust_check,...
-	'workers',workers,'modelselection',modelselection,'outlierpoints',outlierpoints);
+	'workers',workers,'modelselection',modelselection,'outlierpoints',outlierpoints,...
+	'usermodel',usermodel);
 
 MODEL.features=PCS;
 features=size(CLUSTER_DATA,2); % what's the dimensionality of the data used for sorting?

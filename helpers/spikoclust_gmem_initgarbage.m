@@ -14,10 +14,10 @@ p=prod(datarange);
 if p==inf
 
 	% issue warning here
-
+    p=1e30;
 	warning('gmem:volumetoolarge',...
 		'Cannot compute volume, setting to : %e',p);
-	p=1e30;
+	
 end
 
 P=(1/p).*ones(datapoints,1);
