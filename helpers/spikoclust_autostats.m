@@ -1,4 +1,4 @@
-function CLUSTER=spikoclust_autostats(CLUSTER,SPIKELESS,varargin)
+function [CLUSTER,FIGS]=spikoclust_autostats(CLUSTER,SPIKELESS,varargin)
 %script for visualizing the results of clustering
 %
 
@@ -88,9 +88,9 @@ for j=1:nplots
 end
 
 if savemode
-	stats_fig=figure('Visible','off');
+	FIGS.waveforms=figure('Visible','off');
 else
-	stats_fig=figure('Visible','on');
+	FIGS.waveforms=figure('Visible','on');
 end
 
 note=[];
@@ -107,12 +107,12 @@ if ~isempty(CLUSTER.parameters.tetrode_channels)
 		sum(CLUSTER.parameters.spike_window*CLUSTER.parameters.interpolate_fs)));
 end
 
-stats_fig=spikoclust_visual_waveforms(CLUSTER,...
-	'noise_p2p',mean_noise_p2p,'fig_num',stats_fig,'note',note,...
+FIGS.waveforms=spikoclust_visual_waveforms(CLUSTER,...
+	'noise_p2p',mean_noise_p2p,'fig_num',FIGS.waveforms,'note',note,...
 	'channelboundary',channelboundary);
 
-set(stats_fig,'Position',[0 0 250*nplots 600]);
-set(stats_fig,'PaperPositionMode','auto');
+set(FIGS.waveforms,'Position',[0 0 250*nplots 600]);
+set(FIGS.waveforms,'PaperPositionMode','auto');
 
 % label candidate units if they meet our criteria
 % isi intervals < absolute refractory period
@@ -123,9 +123,9 @@ isi_violations=isi_violations/length(CLUSTER.isi{j});
 % are there enough spikes?
 
 if savemode
-	markolab_multi_fig_save(stats_fig,savedir,...
+	markolab_multi_fig_save(FIGS.waveforms,savedir,...
 		[ savefilename_stats 'spikestats' ],'eps,png','res',100,'renderer','painters');
-	close([stats_fig]);
+	close([FIGS.waveforms]);
 end
 
 for j=1:nplots
@@ -134,9 +134,9 @@ for j=1:nplots
 		if CLUSTER.stats.snr(j)>=snr_cutoff && ...
 				(isnan(CLUSTER.stats.lratio(j)) || ...
 				CLUSTER.stats.lratio(j)<=lratio_cutoff) &&  ...
-				isi_violations<isi_cutoff 
+				isi_violations<isi_cutoff
 			if isnan(CLUSTER.stats.isod(j)) || CLUSTER.stats.isod(j)>=isod_cutoff
-				fid=fopen(fullfile(savedir,['candidate_unit_ch' num2str(channels) ... 
+				fid=fopen(fullfile(savedir,['candidate_unit_ch' num2str(channels) ...
 					'_cl' num2str(j)]),'w');
 				fclose(fid);
 			end
@@ -147,40 +147,39 @@ end
 if nplots<=10
 
 	if savemode
-		stats_fig=figure('Visible','off','renderer','painters');
+		FIGS.cluster_stats=figure('Visible','off','renderer','painters');
 	else
-		stats_fig=figure('Visible','on','renderer','painters');
+		FIGS.cluster_stats=figure('Visible','on','renderer','painters');
 	end
 
-	stats_fig=spikoclust_visual_clustering(CLUSTER,'fig_num',stats_fig);
+	FIGS.cluster_stats=spikoclust_visual_clustering(CLUSTER,'fig_num',FIGS.cluster_stats);
 
-	set(stats_fig,'Position',[0 0 250+200*nplots 250+200*nplots]);
-	set(stats_fig,'PaperPositionMode','auto');
+	set(FIGS.cluster_stats,'Position',[0 0 250+200*nplots 250+200*nplots]);
+	set(FIGS.cluster_stats,'PaperPositionMode','auto');
 
 	if savemode
-		markolab_multi_fig_save(stats_fig,savedir,...
+		markolab_multi_fig_save(FIGS.cluster_stats,savedir,...
 			[ savefilename_stats 'cluststats' ],'eps,png','res',100,'renderer','painters');
-		close([stats_fig]);
+		close([FIGS.cluster_stats]);
 	end
 
 
 	if size(CLUSTER.model.mu,2)>1 & clust_plot
 
 		if savemode
-			stats_fig=figure('Visible','off');
+			FIGS.model_vis=figure('Visible','off');
 		else
-			stats_fig=figure('Visible','on');
+			FIGS.model_vis=figure('Visible','on');
 		end
 
 
-		stats_fig=spikoclust_gaussvis(CLUSTER.model,CLUSTER.spikedata,'fig_num',stats_fig,'dim_labels',dim_labels);
-		
+		FIGS.model_vis=spikoclust_gaussvis(CLUSTER.model,CLUSTER.spikedata,'fig_num',FIGS.model_vis,'dim_labels',dim_labels);
+
 		if savemode
-			markolab_multi_fig_save(stats_fig,savedir,...
+			markolab_multi_fig_save(FIGS.model_vis,savedir,...
 				[ savefilename_stats 'clustplot' ],'eps,png','res',100,'renderer','painters');
-			close([stats_fig]);
+			close([FIGS.model_vis]);
 		end
 	end
 
 end
-

@@ -61,7 +61,7 @@ disp(['Garbage collection: ' num2str(garbage)]);
 disp(['SMEM:  ' num2str(smem)]);
 disp(['Workers (deployed only):  ' num2str(workers)]);
 disp(['Model selection ' modelselection]);
-disp(['User supplied model ' num2str(isempty(usermodel))]);
+disp(['User supplied model ' num2str(~isempty(usermodel))]);
 
 [nsamples,ntrials,nchannels]=size(SPIKES.windows);
 
