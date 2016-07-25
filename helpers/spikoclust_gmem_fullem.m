@@ -55,8 +55,8 @@ for i=1:maxiter
 		px=px+mixprob;
 	end
 
-	% likelihood
-
+	% likelihood    
+    
 	for j=1:NCLUST
 		R(:,j)=R(:,j)./(den+1e-300);
 	end
@@ -79,7 +79,7 @@ for i=1:maxiter
 	prev_likelihood=likelihood;
 	
 	% update mu, sigma and mixing probabilities
-
+    
 	for j=1:NCLUST
 
 		% need the total r for normalization

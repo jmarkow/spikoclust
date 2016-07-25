@@ -24,7 +24,7 @@ end
 
 [~,loc]=max(likelihood);
 MODEL=tmp_newmodel{loc(1)};
-[PCS,LAMBDA]=svds(MODEL.sigma(:,:,1),K,'largest');
+[PCS,LAMBDA]=svds(MODEL.sigma(:,:,1),K,'L');
 LAMBDA=diag(LAMBDA);
 [~,idx]=sort(LAMBDA,'descend');
 PCS=PCS(:,idx);
